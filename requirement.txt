@@ -1,0 +1,7 @@
+gymnasium[atari]
+ale-py
+stable-baselines3
+shimmy
+numpy
+autorom[accept-rom-license]
+torch
