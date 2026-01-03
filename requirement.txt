@@ -5,3 +5,4 @@ shimmy
 numpy
 autorom[accept-rom-license]
 torch
+keyboard
