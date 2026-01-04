@@ -12,16 +12,17 @@ import os
 # ==========================================
 # 0. CONFIGURACIÓN
 # ==========================================
-USAR_IMITATION_WARMUP = False  # ¿Juegas tú primero?
+USAR_IMITATION_WARMUP = False   # ¿Juegas tú primero?
 PASOS_HUMANOS = 1000          
 PASOS_ENTRENAMIENTO = 10000  
 ENV_ID = "ALE/MsPacman-v5"
 
 # --- CONFIGURACIÓN DE SEGURIDAD ---
 USAR_ESCUDO_IA = False          # Si True: El código sobreescribe la acción para salvar a Pacman
-PENALIZAR_PELIGRO = True       # Si True: Resta puntos (-10) si hay fantasmas cerca (Independiente del escudo)
+PENALIZAR_PELIGRO = True       # Si True: Resta puntos (-10) si hay fantasmas cerca
 
-# VARIABLE DE ESTADO (NO TOCAAR)
+# VARIABLE DE ESTADO (No tocar)
+MODO_SOLO_HUMANO = False 
 
 gym.register_envs(ale_py)
 
@@ -46,7 +47,7 @@ class SafeShieldWrapper(gym.Wrapper):
         super().__init__(env)
         self.monitor = PacmanSafetyMonitor()
         self.interventions = 0   # Veces que el escudo corrigió la acción
-        self.danger_counts = 0   # Veces que se detectó peligro (para penalización)
+        self.penalties_applied = 0 # Veces que se aplicó el castigo
         
     def step(self, action):
         # 1. Si está jugando el humano, no intervenimos nunca
@@ -61,20 +62,17 @@ class SafeShieldWrapper(gym.Wrapper):
         penalty = 0.0
 
         # 3. Lógica de Penalización (Independiente del Escudo)
-        # Si la IA se mete en la boca del lobo, la castigamos aunque no tengamos escudo
-        if is_unsafe:
-            self.danger_counts += 1
-            if PENALIZAR_PELIGRO:
-                penalty = -10.0 
+        if is_unsafe and PENALIZAR_PELIGRO:
+            penalty = -10.0
+            self.penalties_applied += 1
 
         # 4. Lógica del Escudo (Intervención)
-        # Solo interviene si hay peligro Y el escudo está activado
         if is_unsafe and USAR_ESCUDO_IA:
             safe_action = self.monitor.get_safe_action(pacman_pos, ghosts_pos)
             final_action = safe_action
             self.interventions += 1
             
-        # Ejecutamos la acción (original o corregida)
+        # Ejecutamos la acción
         obs, reward, terminated, truncated, info = self.env.step(final_action)
         
         # Aplicamos la penalización al reward
@@ -84,10 +82,15 @@ class SafeShieldWrapper(gym.Wrapper):
 
     def close(self):
         # Imprimir estadísticas al cerrar el entorno
-        if not MODO_SOLO_HUMANO: # Solo mostrar stats de la sesión de IA
+        if not MODO_SOLO_HUMANO: 
             print("\n" + "="*45)
             print("📊 ESTADÍSTICAS DE SEGURIDAD (Post-Entreno)")
-            print(f"   ⚠️  Veces en Zona de Peligro: {self.danger_counts}")
+            # Solo mostramos penalizaciones si la opción estaba activa, para no confundir
+            if PENALIZAR_PELIGRO:
+                print(f"   📉  Veces Penalizado (-10 pts): {self.penalties_applied}")
+            else:
+                print(f"   📉  Penalización desactivada (0)")
+                
             print(f"   🛡️  Intervenciones del Escudo: {self.interventions}")
             print("="*45 + "\n")
         return super().close()
@@ -126,7 +129,7 @@ if __name__ == "__main__":
     
     print("\n⚙️  Inicializando entorno...")
     
-    # FASE 1: JUEGO HUMANO (Solo si USAR_IMITATION_WARMUP es True)
+    # FASE 1: JUEGO HUMANO
     if USAR_IMITATION_WARMUP:
         MODO_SOLO_HUMANO = True 
         
@@ -136,10 +139,7 @@ if __name__ == "__main__":
         print("Usa las FLECHAS del teclado.")
         print("="*50 + "\n")
         
-        # Creamos entorno visual
         env = obtener_entorno_vectorizado(render_mode="human")
-        
-        # Inicializamos modelo
         model = DQN("CnnPolicy", env, buffer_size=50000, learning_starts=1000, exploration_fraction=0.2)
 
         obs = env.reset()
@@ -151,7 +151,6 @@ if __name__ == "__main__":
                 action_array = np.array([action_int]) 
                 
                 next_obs, rewards, dones, infos = env.step(action_array)
-                
                 model.replay_buffer.add(obs, next_obs, action_array, rewards, dones, infos)
                 
                 obs = next_obs
@@ -169,22 +168,19 @@ if __name__ == "__main__":
         env.close()
 
     # FASE 2: ENTRENAMIENTO IA
-    MODO_SOLO_HUMANO = False # Aseguramos que el escudo protege a la IA (si está activo)
+    MODO_SOLO_HUMANO = False 
     
     print(f"\n🛡️ ESTADO DE SEGURIDAD:")
     print(f"   - Escudo Activo (Intervención): {USAR_ESCUDO_IA}")
     print(f"   - Penalización por Riesgo (Reward Shaping): {PENALIZAR_PELIGRO}")
     print("🚀 Iniciando entrenamiento DQN...")
     
-    # Recreamos el entorno sin ventana para ir rápido
     env = obtener_entorno_vectorizado(render_mode=None)
     
-    # Si ya teníamos modelo (del warmup), solo cambiamos el entorno
     if 'model' in locals():
         model.set_env(env)
-        model.learning_starts = 0 # Aprendemos YA de lo que jugaste
+        model.learning_starts = 0 
     else:
-        # Si NO hubo warmup, creamos el modelo de cero aquí
         print("ℹ️ Creando modelo nuevo (sin experiencia humana previa)...")
         model = DQN("CnnPolicy", env, buffer_size=50000, learning_starts=1000, exploration_fraction=0.2)
 
@@ -193,8 +189,8 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n⚠️ Entrenamiento detenido por el usuario. Guardando progreso...")
 
-    # Generamos el nombre dinámico del archivo para que sepas qué configuración usaste
-    tipo_entreno = "Hibrido" if USAR_IMITATION_WARMUP else "IA_Sola"
+    # Generación de nombre actualizada
+    tipo_entreno = "Imitation" if USAR_IMITATION_WARMUP else "IA_Sola"
     seguridad_tag = "ShieldON" if USAR_ESCUDO_IA else "ShieldOFF"
     penalty_tag = "_Penalty" if PENALIZAR_PELIGRO else ""
     
@@ -203,6 +199,5 @@ if __name__ == "__main__":
     print(f"💾 Guardando modelo como: {nombre_archivo}")
     model.save(nombre_archivo)
     
-    # Al cerrar el env se imprimirán las estadísticas gracias al método close() del wrapper
     env.close()
     print("👋 ¡Hasta la próxima!")
