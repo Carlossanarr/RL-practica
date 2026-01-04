@@ -12,20 +12,19 @@ import os
 gym.register_envs(ale_py)
 
 # =========================================================
-# ⚙️ CONFIGURACIÓN DEL EXAMEN
+# ⚙️ CONFIGURACIÓN DEL TEST
 # =========================================================
-# Asegúrate de poner el nombre EXACTO del archivo .zip que generó el entrenamiento (SIN la extensión .zip)
 MODELO_A_CARGAR = "dqn_pacman_IA_Sola_ShieldON_Penalty_steps10000" 
-CARPETA_MODELOS = "agentes_entrenados" # <--- Carpeta donde están los modelos entrenados
-NUM_EPISODIOS   = 5                # Episodios para sacar la media
-USAR_SHIELD     = True             # ¿Validamos CON o SIN la ayuda del escudo?
-RENDERIZAR      = False            # True para ver jugar a la IA
-CARPETA_SALIDA  = "validacion"     # Nombre de la carpeta para guardar resultados
+CARPETA_MODELOS = "agentes_entrenados" 
+NUM_EPISODIOS   = 5                
+USAR_SHIELD     = True             
+RENDERIZAR      = False            
+CARPETA_SALIDA  = "validacion"     
 # =========================================================
 
 env_id = "ALE/MsPacman-v5"
 
-# --- DEFINICIÓN DE WRAPPERS (Copiados y adaptados para Validación) ---
+# --- DEFINICIÓN DE WRAPPERS ---
 
 class AddChannelDimWrapper(gym.ObservationWrapper):
     """Convierte (84, 84) -> (84, 84, 1). Necesario para DQN."""
@@ -43,12 +42,12 @@ class AddChannelDimWrapper(gym.ObservationWrapper):
 class SafeShieldWrapper(gym.Wrapper):
     """
     Versión del Escudo específica para VALIDACIÓN.
-    Añade 'safe_interventions' al diccionario 'info' para poder contar las intervenciones.
+    Añade 'safe_interventions' al diccionario 'info'.
     """
     def __init__(self, env):
         super().__init__(env)
         self.monitor = PacmanSafetyMonitor()
-        self.episode_interventions = 0 # Contador por episodio
+        self.episode_interventions = 0 
         
     def reset(self, **kwargs):
         self.episode_interventions = 0
@@ -67,7 +66,7 @@ class SafeShieldWrapper(gym.Wrapper):
             
         obs, reward, terminated, truncated, info = self.env.step(final_action)
         
-        # --- CLAVE: Inyectamos el dato para que el script de validación lo lea ---
+        # Inyectamos el dato
         info['safe_interventions'] = self.episode_interventions
         
         return obs, reward, terminated, truncated, info
@@ -76,15 +75,12 @@ class SafeShieldWrapper(gym.Wrapper):
 # CONSTRUCCIÓN DEL ENTORNO
 # ---------------------------------------------------------
 def crear_entorno_validacion():
-    # render_mode=None para ir rápido, "human" para ver
     modo = "human" if RENDERIZAR else None
     env = gym.make(env_id, frameskip=1, render_mode=modo)
     
-    # Preprocesamiento IGUAL que en entrenamiento
     env = gym.wrappers.AtariPreprocessing(env, noop_max=0, frame_skip=4, screen_size=84, terminal_on_life_loss=False, grayscale_obs=True)
     env = AddChannelDimWrapper(env)
     
-    # Activamos el escudo solo si la configuración lo pide
     if USAR_SHIELD:
         env = SafeShieldWrapper(env)
     
@@ -94,49 +90,26 @@ def crear_entorno_validacion():
 # EJECUCIÓN DEL TEST
 # =========================================================
 if __name__ == "__main__":
-    # Preparar entorno vectorizado
     val_env = DummyVecEnv([crear_entorno_validacion])
     val_env = VecFrameStack(val_env, n_stack=4)
     val_env = VecTransposeImage(val_env)
 
-    # Construir ruta completa del modelo
+    # Construir ruta completa
     model_path = os.path.join(CARPETA_MODELOS, f"{MODELO_A_CARGAR}.zip")
     
-    # --- BLOQUE DE DEPURACIÓN DE RUTAS ---
-    print("\n🔍 --- DIAGNÓSTICO DE RUTAS ---")
-    print(f"📍 Directorio de trabajo actual (CWD): {os.getcwd()}")
-    print(f"📂 Buscando archivo relativo: {model_path}")
-    print(f"🗺️  Ruta absoluta calculada: {os.path.abspath(model_path)}")
-    
     if not os.path.exists(model_path):
-        print(f"\n❌ ERROR CRÍTICO: Python NO encuentra el archivo.")
-        
-        # Comprobar si al menos la carpeta existe
-        if os.path.exists(CARPETA_MODELOS):
-            print(f"✅ La carpeta '{CARPETA_MODELOS}' SÍ existe. Contenido:")
-            archivos = os.listdir(CARPETA_MODELOS)
-            if not archivos:
-                print("   (La carpeta está vacía)")
-            for f in archivos:
-                print(f"   📄 {f}")
-            print("\n💡 SUGERENCIA: Copia uno de los nombres de arriba (sin .zip) en 'MODELO_A_CARGAR'.")
-        else:
-            print(f"❌ La carpeta '{CARPETA_MODELOS}' NO existe en el directorio actual.")
-            print("   Verifica que estás ejecutando el script desde la raíz del proyecto.")
-        
+        print(f"❌ ERROR: No encuentro el archivo: {model_path}")
         exit()
-    # -------------------------------------
 
+    print(f"📂 Cargando modelo: {model_path} ...")
     model = DQN.load(model_path)
-    print("✅ Modelo cargado correctamente.")
+    print("✅ Modelo cargado.")
 
-    # Crear carpeta de salida si no existe
     if not os.path.exists(CARPETA_SALIDA):
         os.makedirs(CARPETA_SALIDA)
-        print(f"📁 Carpeta '{CARPETA_SALIDA}' creada (si no existía).")
 
     print(f"\n🚀 Iniciando Validación de {NUM_EPISODIOS} episodios...")
-    print(f"🛡️ Estado del Escudo: {'ACTIVADO' if USAR_SHIELD else 'DESACTIVADO (A pelo)'}")
+    print(f"🛡️ Estado del Escudo: {'ACTIVADO' if USAR_SHIELD else 'DESACTIVADO'}")
 
     resultados = []
 
@@ -149,29 +122,31 @@ if __name__ == "__main__":
             intervenciones_finales = 0
             
             while not done:
-                # PREDICCIÓN DETERMINISTA (Sin exploración aleatoria, la IA juega en serio)
                 action, _ = model.predict(obs, deterministic=True)
-                
                 obs, reward, done, info = val_env.step(action)
                 
                 total_reward += reward
                 steps += 1
                 
-                # Leemos las intervenciones desde el info que modificamos en el wrapper
                 if USAR_SHIELD and 'safe_interventions' in info[0]:
                     intervenciones_finales = info[0]['safe_interventions']
                     
-                # Control de velocidad para que lo veas bien si está renderizando
                 if RENDERIZAR:
                     time.sleep(0.02) 
 
-            print(f"   🔹 Episodio {i+1}: Puntos={total_reward[0]:.0f} | Intervenciones={intervenciones_finales}")
+            # CÁLCULO DE MÉTRICAS NUEVAS
+            eficiencia = total_reward[0] / steps if steps > 0 else 0
+            ratio_seguridad = 100 * (1 - (intervenciones_finales / steps)) if steps > 0 else 0
+
+            print(f"   🔹 Episodio {i+1}: Puntos={total_reward[0]:.0f} | Intervenciones={intervenciones_finales} | Eficiencia={eficiencia:.2f}")
             
             resultados.append({
                 "Episodio": i+1,
                 "Recompensa": float(total_reward[0]),
                 "Duracion": steps,
                 "Intervenciones": intervenciones_finales,
+                "Eficiencia_Pto_Paso": eficiencia,    # NUEVA
+                "Ratio_Seguridad_IA": ratio_seguridad, # NUEVA
                 "Con_Escudo": USAR_SHIELD,
                 "Modelo": MODELO_A_CARGAR
             })
@@ -181,12 +156,13 @@ if __name__ == "__main__":
 
     val_env.close()
 
-    # Guardar y Mostrar Resumen
     if resultados:
         df = pd.DataFrame(resultados)
         print("\n📊 --- RESUMEN DE VALIDACIÓN ---")
-        print(f"Media de Puntos:      {df['Recompensa'].mean():.2f} +/- {df['Recompensa'].std():.2f}")
+        print(f"Media de Puntos:        {df['Recompensa'].mean():.2f}")
         print(f"Media de Intervenciones: {df['Intervenciones'].mean():.2f}")
+        print(f"Media de Eficiencia:     {df['Eficiencia_Pto_Paso'].mean():.3f} pts/paso")
+        print(f"Seguridad Media (IA):    {df['Ratio_Seguridad_IA'].mean():.1f}%")
         
         nombre_archivo = f"validacion_{MODELO_A_CARGAR}_shield{USAR_SHIELD}.csv"
         ruta_completa = os.path.join(CARPETA_SALIDA, nombre_archivo)
