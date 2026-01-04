@@ -1,0 +1,6 @@
+Episodio,Recompensa,Duracion,Intervenciones,Con_Escudo,Modelo
+1,220.0,395,300,True,dqn_pacman_IA_Sola_ShieldON_Penalty_steps10000
+2,390.0,437,277,True,dqn_pacman_IA_Sola_ShieldON_Penalty_steps10000
+3,290.0,441,295,True,dqn_pacman_IA_Sola_ShieldON_Penalty_steps10000
+4,390.0,437,244,True,dqn_pacman_IA_Sola_ShieldON_Penalty_steps10000
+5,420.0,461,328,True,dqn_pacman_IA_Sola_ShieldON_Penalty_steps10000

@@ -16,6 +16,7 @@ USAR_IMITATION_WARMUP = False   # ¿Juegas tú primero?
 PASOS_HUMANOS = 1000          
 PASOS_ENTRENAMIENTO = 10000  
 ENV_ID = "ALE/MsPacman-v5"
+CARPETA_SALIDA = "agentes_entrandos"  # <--- Carpeta donde se guardarán los .zip
 
 # --- CONFIGURACIÓN DE SEGURIDAD ---
 USAR_ESCUDO_IA = False          # Si True: El código sobreescribe la acción para salvar a Pacman
@@ -196,8 +197,15 @@ if __name__ == "__main__":
     
     nombre_archivo = f"dqn_pacman_{tipo_entreno}_{seguridad_tag}{penalty_tag}_steps{PASOS_ENTRENAMIENTO}"
     
-    print(f"💾 Guardando modelo como: {nombre_archivo}")
-    model.save(nombre_archivo)
+    # --- GESTIÓN DE CARPETAS ---
+    if not os.path.exists(CARPETA_SALIDA):
+        os.makedirs(CARPETA_SALIDA)
+        print(f"📁 Carpeta '{CARPETA_SALIDA}' creada.")
+        
+    ruta_completa = os.path.join(CARPETA_SALIDA, nombre_archivo)
+    
+    print(f"💾 Guardando modelo en: {ruta_completa}")
+    model.save(ruta_completa)
     
     env.close()
     print("👋 ¡Hasta la próxima!")
