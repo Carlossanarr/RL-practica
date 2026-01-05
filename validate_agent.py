@@ -12,14 +12,17 @@ import os
 gym.register_envs(ale_py)
 
 # =========================================================
-# ⚙️ CONFIGURACIÓN DEL TEST
+# ⚙️ CONFIGURACIÓN DEL EXAMEN
 # =========================================================
 MODELO_A_CARGAR = "dqn_pacman_IA_Sola_ShieldON_Penalty_steps10000" 
 CARPETA_MODELOS = "agentes_entrenados" 
-NUM_EPISODIOS   = 5                
-USAR_SHIELD     = True             
-RENDERIZAR      = False            
-CARPETA_SALIDA  = "validacion"     
+NUM_EPISODIOS = 5                
+RENDERIZAR = False # True para ver jugar a la IA
+CARPETA_SALIDA = "validacion"     
+
+# --- CONFIGURACIÓN DE SEGURIDAD (Debe coincidir con tu experimento) ---
+USAR_SHIELD = True # ¿Activamos el escudo en la validación?
+DISTANCIA_ESCUDO = 10 # IMPORTANTE: Poner  la misma distancia que usaste al entrenar (10, 25 o 50)
 # =========================================================
 
 env_id = "ALE/MsPacman-v5"
@@ -43,10 +46,12 @@ class SafeShieldWrapper(gym.Wrapper):
     """
     Versión del Escudo específica para VALIDACIÓN.
     Añade 'safe_interventions' al diccionario 'info'.
+    Recibe el umbral de distancia dinámicamente.
     """
-    def __init__(self, env):
+    def __init__(self, env, umbral_distancia):
         super().__init__(env)
         self.monitor = PacmanSafetyMonitor()
+        self.umbral = umbral_distancia # <-- CORRECCIÓN: Usamos la variable, no un número fijo
         self.episode_interventions = 0 
         
     def reset(self, **kwargs):
@@ -55,7 +60,9 @@ class SafeShieldWrapper(gym.Wrapper):
         
     def step(self, action):
         pacman_pos, ghosts_pos = self.monitor.get_positions(self.env)
-        is_unsafe, dist = self.monitor.is_danger(pacman_pos, ghosts_pos, threshold=25)
+        
+        # Usamos el umbral configurado
+        is_unsafe, dist = self.monitor.is_danger(pacman_pos, ghosts_pos, threshold=self.umbral)
         
         final_action = action
         
@@ -74,21 +81,20 @@ class SafeShieldWrapper(gym.Wrapper):
 # ---------------------------------------------------------
 # CONSTRUCCIÓN DEL ENTORNO
 # ---------------------------------------------------------
-
-
 def crear_entorno_validacion():
     modo = "human" if RENDERIZAR else None
     env = gym.make(env_id, frameskip=1, render_mode=modo)
     
     env = gym.wrappers.AtariPreprocessing(env, noop_max=0, frame_skip=4, screen_size=84, terminal_on_life_loss=False, grayscale_obs=True)
     
+    # Límite de tiempo extendido para que pueda ganar si es muy bueno
     env = gym.wrappers.TimeLimit(env, max_episode_steps=25000)
-
 
     env = AddChannelDimWrapper(env)
     
     if USAR_SHIELD:
-        env = SafeShieldWrapper(env)
+        # CORRECCIÓN: Pasamos la distancia configurada
+        env = SafeShieldWrapper(env, umbral_distancia=DISTANCIA_ESCUDO)
     
     return env
 
@@ -115,7 +121,10 @@ if __name__ == "__main__":
         os.makedirs(CARPETA_SALIDA)
 
     print(f"\n🚀 Iniciando Validación de {NUM_EPISODIOS} episodios...")
-    print(f"🛡️ Estado del Escudo: {'ACTIVADO' if USAR_SHIELD else 'DESACTIVADO'}")
+    if USAR_SHIELD:
+        print(f"🛡️ Escudo: ACTIVADO (Distancia: {DISTANCIA_ESCUDO} px)")
+    else:
+        print(f"🛡️ Escudo: DESACTIVADO")
 
     resultados = []
 
@@ -126,21 +135,22 @@ if __name__ == "__main__":
             total_reward = 0
             steps = 0
             intervenciones_finales = 0
-            # # # # # # # # # # # # # # # # 
+            
+            # --- Variables para métricas nuevas ---
             muertes = 0
             vidas_previas = None
             win = 0
             end_reason = "Unknown"
-            # # # # # # # # # # # # # # 
+            # --------------------------------------
 
             while not done:
                 action, _ = model.predict(obs, deterministic=True)
                 obs, reward, done, info = val_env.step(action)
 
-                # # # # # # # # # # # # # # # # # # # 
-                # PPM
-                info0 = info[0]  # porque VecEnv
+                # --- LÓGICA DE MÉTRICAS NUEVAS ---
+                info0 = info[0] # Accedemos al primer entorno del vector
 
+                # Detección de Victoria vs Timeout
                 time_limit_trunc = False
                 if 'TimeLimit.truncated' in info0:
                     time_limit_trunc = bool(info0['TimeLimit.truncated'])
@@ -148,10 +158,12 @@ if __name__ == "__main__":
                     time_limit_trunc = bool(info0['truncated'])
 
                 if done:
+                    # Si se acaba el juego pero NO es por tiempo, asumimos Game Over
+                    # Si se acaba POR tiempo (truncated), asumimos que sobrevivió (Win técnico)
                     win = 1 if time_limit_trunc else 0
                     end_reason = "TimeLimit" if time_limit_trunc else "GameOver"
 
-
+                # Conteo de vidas perdidas
                 if 'lives' in info0:
                     vidas_actuales = info0['lives']
                     if vidas_previas is None:
@@ -160,7 +172,7 @@ if __name__ == "__main__":
                         if vidas_actuales < vidas_previas:
                             muertes += (vidas_previas - vidas_actuales)
                         vidas_previas = vidas_actuales
-                # # # # # # # # # # # # # # # # # # # 
+                # --------------------------------------
                 
                 total_reward += reward
                 steps += 1
@@ -171,28 +183,28 @@ if __name__ == "__main__":
                 if RENDERIZAR:
                     time.sleep(0.02) 
 
-            # CÁLCULO DE MÉTRICAS NUEVAS
+            # CÁLCULO DE MÉTRICAS FINALES
             eficiencia = total_reward[0] / steps if steps > 0 else 0
             ratio_seguridad = 100 * (1 - (intervenciones_finales / steps)) if steps > 0 else 0
-
-            # # # # # # # # # # # # # vv
+            
+            # Evitamos división por cero si no muere nunca (partida perfecta)
             puntos_por_muerte = (total_reward[0] / muertes) if muertes > 0 else float(total_reward[0])
 
-            # # # # # # # # # # # # # 
-            print(f"   🔹 Episodio {i+1}: Puntos={total_reward[0]:.0f} | Muertes={muertes} | PPM={puntos_por_muerte:.2f} | Win={win} | Intervenciones={intervenciones_finales} | Eficiencia={eficiencia:.2f}")
+            print(f" 🔹 Episodio {i+1}: Puntos={total_reward[0]:.0f} | Muertes={muertes} | PPM={puntos_por_muerte:.2f} | Win={win} | Intervenciones={intervenciones_finales}")
             
             resultados.append({
                 "Episodio": i+1,
                 "Recompensa": float(total_reward[0]),
                 "Duracion": steps,
                 "Intervenciones": intervenciones_finales,
-                "Eficiencia_Pto_Paso": eficiencia,    # NUEVA
-                "Ratio_Seguridad_IA": ratio_seguridad, # NUEVA
+                "Eficiencia_Pto_Paso": eficiencia,    
+                "Ratio_Seguridad_IA": ratio_seguridad, 
                 "Muertes": int(muertes),
                 "Puntos_por_muerte": float(puntos_por_muerte),
                 "Win": int(win),
                 "EndReason": end_reason,
                 "Con_Escudo": USAR_SHIELD,
+                "Distancia_Escudo": DISTANCIA_ESCUDO if USAR_SHIELD else 0, # Guardamos la distancia usada
                 "Modelo": MODELO_A_CARGAR
             })
 
@@ -204,20 +216,18 @@ if __name__ == "__main__":
     if resultados:
         df = pd.DataFrame(resultados)
         print("\n📊 --- RESUMEN DE VALIDACIÓN ---")
-        print(f"Media de Puntos:        {df['Recompensa'].mean():.2f}")
+        print(f"Media de Puntos: {df['Recompensa'].mean():.2f}")
         print(f"Media de Intervenciones: {df['Intervenciones'].mean():.2f}")
-        print(f"Media de Eficiencia:     {df['Eficiencia_Pto_Paso'].mean():.3f} pts/paso")
-        print(f"Seguridad Media (IA):    {df['Ratio_Seguridad_IA'].mean():.1f}%")
-
-        # # # # # # # # # # # # # # # # # # # # # # 
-        print(f"Media de Muertes:        {df['Muertes'].mean():.2f}")
-        print(f"Media Puntos/Muerte:     {df['Puntos_por_muerte'].mean():.2f}")
-        print(f"Winrate:                {100 * df['Win'].mean():.1f}%")
-        # # # # # # # # # # # # # # # # # # # # # # 
-
+        print(f"Media de Eficiencia: {df['Eficiencia_Pto_Paso'].mean():.3f} pts/paso")
+        print(f"Seguridad Media (IA): {df['Ratio_Seguridad_IA'].mean():.1f}%")
+        print(f"Media de Muertes: {df['Muertes'].mean():.2f}")
+        print(f"Media Puntos/Muerte: {df['Puntos_por_muerte'].mean():.2f}")
+        print(f"Winrate: {100 * df['Win'].mean():.1f}%")
         
-        nombre_archivo = f"validacion_{MODELO_A_CARGAR}_shield{USAR_SHIELD}.csv"
-        ruta_completa = os.path.join(CARPETA_SALIDA, nombre_archivo)
+        # Nombre del archivo CSV actualizado con la distancia
+        dist_tag = f"_d{DISTANCIA_ESCUDO}" if USAR_SHIELD else "_NoShield"
+        nombre_csv = f"validacion_{MODELO_A_CARGAR}{dist_tag}.csv"
+        ruta_completa = os.path.join(CARPETA_SALIDA, nombre_csv)
         
         df.to_csv(ruta_completa, index=False)
         print(f"📝 Resultados guardados en: {ruta_completa}")

@@ -1,0 +1,6 @@
+Episodio,Recompensa,Duracion,Intervenciones,Eficiencia_Pto_Paso,Ratio_Seguridad_IA,Muertes,Puntos_por_muerte,Win,EndReason,Con_Escudo,Distancia_Escudo,Modelo
+1,220.0,379,50,0.5804749,86.80738786279683,3,73.33333587646484,0,GameOver,True,10,dqn_pacman_IA_Sola_ShieldON_Penalty_steps10000
+2,220.0,379,50,0.5804749,86.80738786279683,3,73.33333587646484,0,GameOver,True,10,dqn_pacman_IA_Sola_ShieldON_Penalty_steps10000
+3,220.0,379,50,0.5804749,86.80738786279683,3,73.33333587646484,0,GameOver,True,10,dqn_pacman_IA_Sola_ShieldON_Penalty_steps10000
+4,220.0,379,50,0.5804749,86.80738786279683,3,73.33333587646484,0,GameOver,True,10,dqn_pacman_IA_Sola_ShieldON_Penalty_steps10000
+5,220.0,379,50,0.5804749,86.80738786279683,3,73.33333587646484,0,GameOver,True,10,dqn_pacman_IA_Sola_ShieldON_Penalty_steps10000
