@@ -1,0 +1,22 @@
+Episodio,Pasos totales,Recompensa,Duracion,Intervenciones,Eficiencia_Pto_Paso,Ratio_Seguridad_IA,Muertes,Puntos_por_muerte,Win,EndReason,UnsafeSteps,UnsafeRatio,Con_Escudo,Distancia_Recompensa,Distancia_Escudo,Modelo
+1,427.0,530.0,427.0,57.0,1.2412179,86.65105386416862,3.0,176.6666717529297,0.0,GameOver,0.0,0.0,True,0,5,dqn_pacman_Imitation_ShieldON_d5_steps400000
+2,497.0,600.0,497.0,58.0,1.2072434,88.32997987927565,3.0,200.0,0.0,GameOver,0.0,0.0,True,0,5,dqn_pacman_Imitation_ShieldON_d5_steps400000
+3,451.0,540.0,451.0,60.0,1.1973393,86.69623059866962,3.0,180.0,0.0,GameOver,0.0,0.0,True,0,5,dqn_pacman_Imitation_ShieldON_d5_steps400000
+4,427.0,530.0,427.0,57.0,1.2412179,86.65105386416862,3.0,176.6666717529297,0.0,GameOver,0.0,0.0,True,0,5,dqn_pacman_Imitation_ShieldON_d5_steps400000
+5,435.0,540.0,435.0,60.0,1.2413793,86.20689655172413,3.0,180.0,0.0,GameOver,0.0,0.0,True,0,5,dqn_pacman_Imitation_ShieldON_d5_steps400000
+6,443.0,530.0,443.0,59.0,1.1963882,86.68171557562077,3.0,176.6666717529297,0.0,GameOver,0.0,0.0,True,0,5,dqn_pacman_Imitation_ShieldON_d5_steps400000
+7,425.0,530.0,425.0,58.0,1.2470589,86.3529411764706,3.0,176.6666717529297,0.0,GameOver,0.0,0.0,True,0,5,dqn_pacman_Imitation_ShieldON_d5_steps400000
+8,435.0,540.0,435.0,60.0,1.2413793,86.20689655172413,3.0,180.0,0.0,GameOver,0.0,0.0,True,0,5,dqn_pacman_Imitation_ShieldON_d5_steps400000
+9,441.0,540.0,441.0,58.0,1.2244898,86.84807256235828,3.0,180.0,0.0,GameOver,0.0,0.0,True,0,5,dqn_pacman_Imitation_ShieldON_d5_steps400000
+10,425.0,530.0,425.0,58.0,1.2470589,86.3529411764706,3.0,176.6666717529297,0.0,GameOver,0.0,0.0,True,0,5,dqn_pacman_Imitation_ShieldON_d5_steps400000
+11,425.0,530.0,425.0,58.0,1.2470589,86.3529411764706,3.0,176.6666717529297,0.0,GameOver,0.0,0.0,True,0,5,dqn_pacman_Imitation_ShieldON_d5_steps400000
+12,369.0,380.0,369.0,57.0,1.0298103,84.55284552845528,3.0,126.66666412353516,0.0,GameOver,0.0,0.0,True,0,5,dqn_pacman_Imitation_ShieldON_d5_steps400000
+13,435.0,540.0,435.0,60.0,1.2413793,86.20689655172413,3.0,180.0,0.0,GameOver,0.0,0.0,True,0,5,dqn_pacman_Imitation_ShieldON_d5_steps400000
+14,497.0,600.0,497.0,58.0,1.2072434,88.32997987927565,3.0,200.0,0.0,GameOver,0.0,0.0,True,0,5,dqn_pacman_Imitation_ShieldON_d5_steps400000
+15,425.0,530.0,425.0,58.0,1.2470589,86.3529411764706,3.0,176.6666717529297,0.0,GameOver,0.0,0.0,True,0,5,dqn_pacman_Imitation_ShieldON_d5_steps400000
+16,497.0,600.0,497.0,58.0,1.2072434,88.32997987927565,3.0,200.0,0.0,GameOver,0.0,0.0,True,0,5,dqn_pacman_Imitation_ShieldON_d5_steps400000
+17,425.0,530.0,425.0,58.0,1.2470589,86.3529411764706,3.0,176.6666717529297,0.0,GameOver,0.0,0.0,True,0,5,dqn_pacman_Imitation_ShieldON_d5_steps400000
+18,425.0,530.0,425.0,58.0,1.2470589,86.3529411764706,3.0,176.6666717529297,0.0,GameOver,0.0,0.0,True,0,5,dqn_pacman_Imitation_ShieldON_d5_steps400000
+19,429.0,530.0,429.0,58.0,1.2354312,86.48018648018649,3.0,176.6666717529297,0.0,GameOver,0.0,0.0,True,0,5,dqn_pacman_Imitation_ShieldON_d5_steps400000
+20,427.0,530.0,427.0,57.0,1.2412179,86.65105386416862,3.0,176.6666717529297,0.0,GameOver,0.0,0.0,True,0,5,dqn_pacman_Imitation_ShieldON_d5_steps400000
+MEDIA,438.0,535.5,438.0,58.25,1.2217667,86.64702443448095,3.0,178.5000026702881,0.0,,0.0,0.0,True,0,5,dqn_pacman_Imitation_ShieldON_d5_steps400000

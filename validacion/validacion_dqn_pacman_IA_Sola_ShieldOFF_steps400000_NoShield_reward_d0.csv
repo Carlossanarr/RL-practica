@@ -1,0 +1,22 @@
+Episodio,Pasos totales,Recompensa,Duracion,Intervenciones,Eficiencia_Pto_Paso,Ratio_Seguridad_IA,Muertes,Puntos_por_muerte,Win,EndReason,UnsafeSteps,UnsafeRatio,Con_Escudo,Distancia_Recompensa,Distancia_Escudo,Modelo
+1,461.0,460.0,461.0,0.0,0.9978308,100.0,3.0,153.3333282470703,0.0,GameOver,0.0,0.0,False,0,0,dqn_pacman_IA_Sola_ShieldOFF_steps400000
+2,463.0,460.0,463.0,0.0,0.9935205,100.0,3.0,153.3333282470703,0.0,GameOver,0.0,0.0,False,0,0,dqn_pacman_IA_Sola_ShieldOFF_steps400000
+3,459.0,460.0,459.0,0.0,1.0021787,100.0,3.0,153.3333282470703,0.0,GameOver,0.0,0.0,False,0,0,dqn_pacman_IA_Sola_ShieldOFF_steps400000
+4,473.0,460.0,473.0,0.0,0.9725159,100.0,3.0,153.3333282470703,0.0,GameOver,0.0,0.0,False,0,0,dqn_pacman_IA_Sola_ShieldOFF_steps400000
+5,433.0,510.0,433.0,0.0,1.1778291,100.0,3.0,170.0,0.0,GameOver,0.0,0.0,False,0,0,dqn_pacman_IA_Sola_ShieldOFF_steps400000
+6,477.0,510.0,477.0,0.0,1.0691824,100.0,3.0,170.0,0.0,GameOver,0.0,0.0,False,0,0,dqn_pacman_IA_Sola_ShieldOFF_steps400000
+7,553.0,560.0,553.0,0.0,1.0126582,100.0,3.0,186.6666717529297,0.0,GameOver,0.0,0.0,False,0,0,dqn_pacman_IA_Sola_ShieldOFF_steps400000
+8,447.0,420.0,447.0,0.0,0.9395973,100.0,3.0,140.0,0.0,GameOver,0.0,0.0,False,0,0,dqn_pacman_IA_Sola_ShieldOFF_steps400000
+9,447.0,500.0,447.0,0.0,1.1185682,100.0,3.0,166.6666717529297,0.0,GameOver,0.0,0.0,False,0,0,dqn_pacman_IA_Sola_ShieldOFF_steps400000
+10,435.0,440.0,435.0,0.0,1.0114943,100.0,3.0,146.6666717529297,0.0,GameOver,0.0,0.0,False,0,0,dqn_pacman_IA_Sola_ShieldOFF_steps400000
+11,767.0,630.0,767.0,0.0,0.821382,100.0,3.0,210.0,0.0,GameOver,0.0,0.0,False,0,0,dqn_pacman_IA_Sola_ShieldOFF_steps400000
+12,463.0,460.0,463.0,0.0,0.9935205,100.0,3.0,153.3333282470703,0.0,GameOver,0.0,0.0,False,0,0,dqn_pacman_IA_Sola_ShieldOFF_steps400000
+13,487.0,460.0,487.0,0.0,0.9445585,100.0,3.0,153.3333282470703,0.0,GameOver,0.0,0.0,False,0,0,dqn_pacman_IA_Sola_ShieldOFF_steps400000
+14,541.0,610.0,541.0,0.0,1.1275415,100.0,3.0,203.3333282470703,0.0,GameOver,0.0,0.0,False,0,0,dqn_pacman_IA_Sola_ShieldOFF_steps400000
+15,463.0,460.0,463.0,0.0,0.9935205,100.0,3.0,153.3333282470703,0.0,GameOver,0.0,0.0,False,0,0,dqn_pacman_IA_Sola_ShieldOFF_steps400000
+16,767.0,680.0,767.0,0.0,0.88657105,100.0,3.0,226.6666717529297,0.0,GameOver,0.0,0.0,False,0,0,dqn_pacman_IA_Sola_ShieldOFF_steps400000
+17,565.0,570.0,565.0,0.0,1.0088495,100.0,3.0,190.0,0.0,GameOver,0.0,0.0,False,0,0,dqn_pacman_IA_Sola_ShieldOFF_steps400000
+18,521.0,470.0,521.0,0.0,0.90211135,100.0,3.0,156.6666717529297,0.0,GameOver,0.0,0.0,False,0,0,dqn_pacman_IA_Sola_ShieldOFF_steps400000
+19,545.0,770.0,545.0,0.0,1.4128441,100.0,3.0,256.6666564941406,0.0,GameOver,0.0,0.0,False,0,0,dqn_pacman_IA_Sola_ShieldOFF_steps400000
+20,611.0,630.0,611.0,0.0,1.0310966,100.0,3.0,210.0,0.0,GameOver,0.0,0.0,False,0,0,dqn_pacman_IA_Sola_ShieldOFF_steps400000
+MEDIA,518.9,526.0,518.9,0.0,1.0208685,100.0,3.0,175.33333206176758,0.0,,0.0,0.0,False,0,0,dqn_pacman_IA_Sola_ShieldOFF_steps400000
