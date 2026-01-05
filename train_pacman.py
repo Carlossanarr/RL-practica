@@ -3,8 +3,10 @@ import ale_py
 from stable_baselines3 import DQN
 from stable_baselines3.common.vec_env import VecFrameStack, DummyVecEnv, VecTransposeImage
 from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.callbacks import BaseCallback # <--- Importante para el callback
 from safety_utils import PacmanSafetyMonitor 
 import numpy as np
+import pandas as pd # <--- Necesario para guardar el CSV
 import time
 import keyboard
 import os
@@ -14,9 +16,11 @@ import os
 # ==========================================
 USAR_IMITATION_WARMUP = False # ¿Juegas tú primero? (Warmup)
 PASOS_HUMANOS = 3000          
-PASOS_ENTRENAMIENTO = 100000  
+PASOS_ENTRENAMIENTO = 25000 
+LOG_INTERVALO = 5000 # <--- Cada cuántos pasos guardamos el dato de muertes (5k para mejor gráfica)
 ENV_ID = "ALE/MsPacman-v5"
 CARPETA_SALIDA = "agentes_entrenados" 
+ARCHIVO_CSV_LOGS = "historial_muertes_training.csv" # <--- Nombre del archivo acumulativo
 
 # --- CONFIGURACIÓN DE SEGURIDAD (SHIELDING) ---
 USAR_ESCUDO_IA = True # Si True: El código interviene para salvar a Pacman
@@ -36,7 +40,6 @@ gym.register_envs(ale_py)
 # 1. WRAPPERS
 # ==========================================
 class AddChannelDimWrapper(gym.ObservationWrapper):
-    """Convierte (84, 84) -> (84, 84, 1)"""
     def __init__(self, env):
         super().__init__(env)
         if len(self.observation_space.shape) == 2:
@@ -55,48 +58,32 @@ class SafeShieldWrapper(gym.Wrapper):
         self.dist_shield = dist_shield
         self.dist_reward = dist_reward
         self.penalty_val = penalty_val
-        
         self.interventions = 0   
         self.penalties_applied = 0 
         
     def step(self, action):
-        # 1. Si está jugando el humano, no intervenimos nunca
         if MODO_SOLO_HUMANO:
             return self.env.step(action)
 
-        # 2. Análisis de Seguridad
-        # Calculamos usando el umbral mayor para asegurarnos de obtener la distancia real 
-        # si está dentro del rango de "visión" más amplio (generalmente el de recompensa)
         max_dist = max(self.dist_shield, self.dist_reward)
         pacman_pos, ghosts_pos = self.monitor.get_positions(self.env)
-        
-        # is_danger devuelve la distancia al fantasma más cercano
         is_unsafe_general, dist = self.monitor.is_danger(pacman_pos, ghosts_pos, threshold=max_dist)
         
         final_action = action
         reward_adjustment = 0.0
 
-        # 3. Lógica de Penalización (REWARD SHAPING)
-        # Se activa si estamos más cerca que el umbral de prudencia (ej: 50px)
         if PENALIZAR_PELIGRO and dist < self.dist_reward:
-            # Penalización lineal: más cerca = más castigo
             severity = 1.0 - (dist / self.dist_reward)
             reward_adjustment = self.penalty_val * severity
             self.penalties_applied += 1
 
-        # 4. Lógica del Escudo (INTERVENCIÓN)
-        # Se activa si estamos más cerca que el umbral de emergencia (ej: 10px) y el escudo está ON
         if USAR_ESCUDO_IA and dist < self.dist_shield:
             safe_action = self.monitor.get_safe_action(pacman_pos, ghosts_pos)
             final_action = safe_action
             self.interventions += 1
             
-        # Ejecutamos la acción (original o corregida)
         obs, reward, terminated, truncated, info = self.env.step(final_action)
-        
-        # Aplicamos el ajuste a la recompensa
         reward += reward_adjustment
-            
         return obs, reward, terminated, truncated, info
 
     def close(self):
@@ -107,7 +94,6 @@ class SafeShieldWrapper(gym.Wrapper):
                 print(f" 📉 Veces Penalizado (Dist < {self.dist_reward}): {self.penalties_applied}")
             else:
                 print(f" 📉 Penalización desactivada (0)")
-                
             if USAR_ESCUDO_IA:
                 print(f" 🛡️ Intervenciones del Escudo (Dist < {self.dist_shield}): {self.interventions}")
             else:
@@ -116,18 +102,59 @@ class SafeShieldWrapper(gym.Wrapper):
         return super().close()
 
 # ==========================================
-# 2. CONSTRUCCIÓN DEL ENTORNO
+# 2. CALLBACK PARA CONTAR MUERTES
+# ==========================================
+class DeathLoggingCallback(BaseCallback):
+    """
+    Callback personalizado para registrar muertes acumuladas durante el entrenamiento.
+    """
+    def __init__(self, log_interval=5000, verbose=0):
+        super(DeathLoggingCallback, self).__init__(verbose)
+        self.log_interval = log_interval
+        self.total_deaths = 0
+        self.last_lives = None
+        # Diccionario para guardar el historial: {step: muertes_acumuladas}
+        self.death_history = {} 
+
+    def _on_step(self) -> bool:
+        # Accedemos a la info del entorno (vectorizado)
+        infos = self.locals['infos']
+        
+        # Iteramos por los entornos (normalmente 1 en DummyVecEnv)
+        current_lives = 0
+        for info in infos:
+            # ALE/Gymnasium suele devolver 'lives' en el diccionario info
+            if 'lives' in info:
+                current_lives += info['lives']
+        
+        # Inicialización
+        if self.last_lives is None:
+            self.last_lives = current_lives
+            
+        # Detectar muerte: Si las vidas bajan, sumamos al contador
+        if current_lives < self.last_lives:
+            diff = self.last_lives - current_lives
+            self.total_deaths += diff
+            
+        # Si las vidas suben (reset del juego), actualizamos sin contar muerte
+        self.last_lives = current_lives
+        
+        # Registrar datos según el intervalo
+        if self.num_timesteps % self.log_interval == 0:
+            self.death_history[self.num_timesteps] = self.total_deaths
+            if self.verbose > 0:
+                print(f"Step {self.num_timesteps}: Muertes acumuladas = {self.total_deaths}")
+                
+        return True
+
+# ==========================================
+# 3. FUNCIONES DE ENTORNO
 # ==========================================
 def crear_entorno(render_mode=None):
     env = gym.make(ENV_ID, frameskip=1, render_mode=render_mode)
     env = gym.wrappers.AtariPreprocessing(env, noop_max=0, frame_skip=4, screen_size=84, terminal_on_life_loss=False, grayscale_obs=True)
     env = AddChannelDimWrapper(env)
-    
-    # Pasamos las variables globales al wrapper
-    env = SafeShieldWrapper(env, 
-                            dist_shield=DISTANCIA_ESCUDO, 
-                            dist_reward=DISTANCIA_RECOMPENSA, 
-                            penalty_val=PENALIZACION)
+    env = SafeShieldWrapper(env, dist_shield=DISTANCIA_ESCUDO, dist_reward=DISTANCIA_RECOMPENSA, penalty_val=PENALIZACION)
     env = Monitor(env)
     return env
 
@@ -137,9 +164,6 @@ def obtener_entorno_vectorizado(render_mode=None):
     vec_env = VecTransposeImage(vec_env)
     return vec_env
 
-# ==========================================
-# 3. CONTROL HUMANO (MEJORADO)
-# ==========================================
 def obtener_accion_humana():
     if keyboard.is_pressed('up'): return 1
     elif keyboard.is_pressed('right'): return 2
@@ -148,51 +172,38 @@ def obtener_accion_humana():
     return 0 
 
 # ==========================================
-# 4. EJECUCIÓN DIRECTA
+# 4. EJECUCIÓN PRINCIPAL
 # ==========================================
 if __name__ == "__main__":
     
     print("\n⚙️ Inicializando entorno...")
     
-    # FASE 1: JUEGO HUMANO
+    # --- FASE 1: HUMAN WARMUP ---
     if USAR_IMITATION_WARMUP:
         MODO_SOLO_HUMANO = True 
-        
-        print("\n" + "="*50)
-        print(f"🎮 MODO ENTRENAMIENTO HÍBRIDO ACTIVO")
-        print(f"Objetivo: Jugar {PASOS_HUMANOS} pasos para enseñar a la IA.")
-        print("Usa las FLECHAS del teclado.")
-        print("="*50 + "\n")
+        print(f"\n🎮 MODO ENTRENAMIENTO HÍBRIDO ACTIVO ({PASOS_HUMANOS} pasos)")
         
         env = obtener_entorno_vectorizado(render_mode="human")
         model = DQN("CnnPolicy", env, buffer_size=50000, learning_starts=1000, exploration_fraction=0.2)
-
         obs = env.reset()
         current_steps = 0
-        
         try:
             while current_steps < PASOS_HUMANOS:
                 action_int = obtener_accion_humana()
                 action_array = np.array([action_int]) 
-                
                 next_obs, rewards, dones, infos = env.step(action_array)
                 model.replay_buffer.add(obs, next_obs, action_array, rewards, dones, infos)
-                
                 obs = next_obs
                 current_steps += 1
                 time.sleep(0.04) 
-                
                 if dones[0]:
                     obs = env.reset()
-                    print(f"💀 Pac-Man murió. Reiniciando... ({current_steps}/{PASOS_HUMANOS})")
-        
         except KeyboardInterrupt:
-            print("\n⚠️ Interrupción manual detectada. Pasando al entrenamiento...")
-
+            print("\n⚠️ Interrupción manual en Warmup.")
         print("\n✅ ¡Fase Humana Completada!")
         env.close()
 
-    # FASE 2: ENTRENAMIENTO IA
+    # --- FASE 2: ENTRENAMIENTO IA ---
     MODO_SOLO_HUMANO = False 
     
     print(f"\n🛡️ ESTADO DE SEGURIDAD:")
@@ -206,17 +217,20 @@ if __name__ == "__main__":
         model.set_env(env)
         model.learning_starts = 0 
     else:
-        print("ℹ️ Creando modelo nuevo (sin experiencia humana previa)...")
+        print("ℹ️ Creando modelo nuevo...")
         model = DQN("CnnPolicy", env, buffer_size=50000, learning_starts=1000, exploration_fraction=0.2)
 
-    try:
-        model.learn(total_timesteps=PASOS_ENTRENAMIENTO, progress_bar=True)
-    except KeyboardInterrupt:
-        print("\n⚠️ Entrenamiento detenido por el usuario. Guardando progreso...")
+    # Inicializamos el Callback de Muertes
+    death_callback = DeathLoggingCallback(log_interval=LOG_INTERVALO, verbose=1)
 
-    # Generación de nombre con TODOS los parámetros
+    try:
+        # Pasamos el callback al método learn
+        model.learn(total_timesteps=PASOS_ENTRENAMIENTO, progress_bar=True, callback=death_callback)
+    except KeyboardInterrupt:
+        print("\n⚠️ Entrenamiento detenido por el usuario.")
+
+    # Generación de nombre
     tipo_entreno = "Imitation" if USAR_IMITATION_WARMUP else "IA_Sola"
-    
     if USAR_ESCUDO_IA:
         seguridad_tag = f"ShieldON_d{DISTANCIA_ESCUDO}"
     else:
@@ -227,17 +241,52 @@ if __name__ == "__main__":
     else:
         penalty_tag = ""
     
-    nombre_archivo = f"dqn_pacman_{tipo_entreno}_{seguridad_tag}{penalty_tag}_steps{PASOS_ENTRENAMIENTO}"
+    model_name = f"dqn_pacman_{tipo_entreno}_{seguridad_tag}{penalty_tag}_steps{PASOS_ENTRENAMIENTO}"
     
-    # --- GESTIÓN DE CARPETAS ---
+    # Guardar modelo
     if not os.path.exists(CARPETA_SALIDA):
         os.makedirs(CARPETA_SALIDA)
-        print(f"📁 Carpeta '{CARPETA_SALIDA}' creada.")
-        
-    ruta_completa = os.path.join(CARPETA_SALIDA, nombre_archivo)
-    
-    print(f"💾 Guardando modelo en: {ruta_completa}")
-    model.save(ruta_completa)
+    ruta_modelo = os.path.join(CARPETA_SALIDA, model_name)
+    print(f"💾 Guardando modelo en: {ruta_modelo}")
+    model.save(ruta_modelo)
     
     env.close()
+
+    # ==========================================
+    # 5. GUARDADO DE LOGS EN CSV
+    # ==========================================
+    print(f"\n📝 Procesando logs de entrenamiento...")
+    
+    # Convertimos el historial del callback a un DataFrame
+    # Estructura: Pasos (columnas) -> Muertes (valores)
+    data = death_callback.death_history
+    
+    # Creamos una fila con el nombre del modelo y la configuración
+    row_data = {
+        "Model_Name": model_name,
+        "Imitation": USAR_IMITATION_WARMUP,
+        "Shield": USAR_ESCUDO_IA,
+        "Shield_Dist": DISTANCIA_ESCUDO if USAR_ESCUDO_IA else 0,
+        "Reward_Shaping": PENALIZAR_PELIGRO,
+        "Reward_Dist": DISTANCIA_RECOMPENSA if PENALIZAR_PELIGRO else 0,
+        "Total_Steps": PASOS_ENTRENAMIENTO
+    }
+    
+    # Añadimos las columnas de pasos dinámicamente (step_5000, step_10000...)
+    for step, deaths in data.items():
+        row_data[f"Step_{step}"] = deaths
+        
+    new_df = pd.DataFrame([row_data])
+
+    # Lógica de Append: Si existe, se añade; si no, se crea
+    if os.path.exists(ARCHIVO_CSV_LOGS):
+        # Leemos el existente para alinear columnas si hiciera falta
+        existing_df = pd.read_csv(ARCHIVO_CSV_LOGS)
+        combined_df = pd.concat([existing_df, new_df], ignore_index=True)
+        combined_df.to_csv(ARCHIVO_CSV_LOGS, index=False)
+        print(f"✅ Fila añadida a '{ARCHIVO_CSV_LOGS}'")
+    else:
+        new_df.to_csv(ARCHIVO_CSV_LOGS, index=False)
+        print(f"✅ Archivo '{ARCHIVO_CSV_LOGS}' creado exitosamente.")
+
     print("👋 ¡Hasta la próxima!")
