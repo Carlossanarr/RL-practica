@@ -17,19 +17,19 @@ import os
 USAR_IMITATION_WARMUP = False # ¿Juegas tú primero? (Warmup)
 PASOS_HUMANOS = 3000          
 PASOS_ENTRENAMIENTO = 10000 
-LOG_INTERVALO = 1000 # DEJAR FIJO POR FAVOR
+LOG_INTERVALO = 1000 # Cada cuántos pasos guardamos una fila en el CSV
 ENV_ID = "ALE/MsPacman-v5"
 CARPETA_SALIDA = "agentes_entrenados" 
-ARCHIVO_CSV_LOGS = "historial_training_completo.csv" # <--- Nombre nuevo para diferenciarlo
+ARCHIVO_CSV_LOGS = "historial_training.csv" # <--- Archivo para comparar curvas
 
-# --- CONFIGURACIÓN DE SEGURIDAD (SHIELDING) ---
-USAR_ESCUDO_IA = True # Si True: El código interviene para salvar a Pacman
-DISTANCIA_ESCUDO = 10 # Distancia (píxeles) a la que salta el escudo
+# --- CONFIGURACIÓN DE SEGURIDAD ---
+USAR_ESCUDO_IA = True           
+DISTANCIA_ESCUDO = 10           
 
-# --- CONFIGURACIÓN DE RECOMPENSA (REWARD SHAPING) ---
-PENALIZAR_PELIGRO = True # Si True: Resta puntos si hay fantasmas cerca
-DISTANCIA_RECOMPENSA = 25 # Distancia (píxeles) a la que empieza a penalizar
-PENALIZACION = -10.0 # Cuántos puntos restar
+# --- CONFIGURACIÓN DE RECOMPENSA ---
+PENALIZAR_PELIGRO = False        
+DISTANCIA_RECOMPENSA = 25       
+PENALIZACION = -10.0            
 
 # VARIABLE DE ESTADO (No tocar)
 MODO_SOLO_HUMANO = False 
@@ -72,13 +72,11 @@ class SafeShieldWrapper(gym.Wrapper):
         final_action = action
         reward_adjustment = 0.0
 
-        # Lógica de Penalización
         if PENALIZAR_PELIGRO and dist < self.dist_reward:
             severity = 1.0 - (dist / self.dist_reward)
             reward_adjustment = self.penalty_val * severity
             self.penalties_applied += 1
 
-        # Lógica del Escudo
         if USAR_ESCUDO_IA and dist < self.dist_shield:
             safe_action = self.monitor.get_safe_action(pacman_pos, ghosts_pos)
             final_action = safe_action
@@ -87,7 +85,6 @@ class SafeShieldWrapper(gym.Wrapper):
         obs, reward, terminated, truncated, info = self.env.step(final_action)
         reward += reward_adjustment
         
-        # --- NUEVO: Inyectamos estadísticas en 'info' para el Callback ---
         info['safe_interventions'] = self.interventions
         info['safe_penalties'] = self.penalties_applied
         
@@ -96,83 +93,65 @@ class SafeShieldWrapper(gym.Wrapper):
     def close(self):
         if not MODO_SOLO_HUMANO: 
             print("\n" + "="*45)
-            print("📊 ESTADÍSTICAS DE SEGURIDAD (Post-Entreno)")
+            print("📊 ESTADÍSTICAS FINALES (Consola)")
             if PENALIZAR_PELIGRO:
-                print(f" 📉 Veces Penalizado (Dist < {self.dist_reward}): {self.penalties_applied}")
-            else:
-                print(f" 📉 Penalización desactivada (0)")
+                print(f" 📉 Veces Penalizado: {self.penalties_applied}")
             if USAR_ESCUDO_IA:
-                print(f" 🛡️ Intervenciones del Escudo (Dist < {self.dist_shield}): {self.interventions}")
-            else:
-                print(f" 🛡️ Escudo desactivado (0)")
+                print(f" 🛡️ Intervenciones Escudo: {self.interventions}")
             print("="*45 + "\n")
         return super().close()
 
 # ==========================================
-# 2. CALLBACK DE MÉTRICAS AVANZADAS
+# 2. CALLBACK DE MÉTRICAS (DATA COLLECTOR)
 # ==========================================
 class MetricsLoggingCallback(BaseCallback):
-    """
-    Registra Muertes, Eficiencia, PPM, Intervenciones y Penalizaciones cada X pasos.
-    """
     def __init__(self, log_interval=5000, verbose=0):
         super(MetricsLoggingCallback, self).__init__(verbose)
         self.log_interval = log_interval
-        
-        # Acumuladores internos
         self.total_deaths = 0
-        self.total_reward_accumulated = 0.0 # Recompensa total sumada paso a paso
+        self.total_reward_accumulated = 0.0 
         self.last_lives = None
         
-        # Historial de datos (diccionarios paso -> valor)
-        self.history = {
-            "Deaths": {},
-            "Efficiency": {},
-            "PPM": {},
-            "Interventions": {},
-            "Penalties": {}
-        }
+        # Almacenaremos una lista de diccionarios (cada uno es una fila del CSV)
+        self.rows_buffer = []
 
     def _on_step(self) -> bool:
-        # Acceso a infos y rewards del vector (asumimos 1 ambiente)
         info = self.locals['infos'][0]
         reward = self.locals['rewards'][0]
         
-        # 1. Acumular recompensa bruta
         self.total_reward_accumulated += reward
         
-        # 2. Detectar Muertes
         current_lives = info.get('lives', 0)
         if self.last_lives is None: 
             self.last_lives = current_lives
             
         if current_lives < self.last_lives:
-            diff = self.last_lives - current_lives
-            self.total_deaths += diff
+            self.total_deaths += (self.last_lives - current_lives)
         
-        self.last_lives = current_lives # Actualizamos vidas (si suben por reset, no pasa nada)
+        self.last_lives = current_lives
         
-        # 3. Leer estadísticas del Wrapper
-        current_interventions = info.get('safe_interventions', 0)
-        current_penalties = info.get('safe_penalties', 0)
-        
-        # 4. Registrar Logs en Intervalos
+        # Registrar datos cada X pasos
         if self.num_timesteps % self.log_interval == 0:
             steps = self.num_timesteps
+            current_interventions = info.get('safe_interventions', 0)
+            current_penalties = info.get('safe_penalties', 0)
             
-            # Cálculos
             efficiency = self.total_reward_accumulated / steps if steps > 0 else 0
             ppm = (self.total_reward_accumulated / self.total_deaths) if self.total_deaths > 0 else self.total_reward_accumulated
             
-            # Guardar en historial
-            self.history["Deaths"][steps] = self.total_deaths
-            self.history["Efficiency"][steps] = efficiency
-            self.history["PPM"][steps] = ppm
-            self.history["Interventions"][steps] = current_interventions
-            self.history["Penalties"][steps] = current_penalties
+            # Guardamos los datos puros en el buffer
+            self.rows_buffer.append({
+                "Step": steps,
+                "Deaths": self.total_deaths,
+                "Reward_Accumulated": self.total_reward_accumulated,
+                "Efficiency": efficiency,
+                "PPM": ppm,
+                "Interventions": current_interventions,
+                "Penalties": current_penalties
+            })
             
             if self.verbose > 0:
-                print(f"Step {steps}: Deaths={self.total_deaths} | Eff={efficiency:.3f} | PPM={ppm:.1f} | Int={current_interventions}")
+                print(f"Step {steps}: Deaths={self.total_deaths} | Eff={efficiency:.3f} | Int={current_interventions}")
                 
         return True
 
@@ -211,7 +190,6 @@ if __name__ == "__main__":
     if USAR_IMITATION_WARMUP:
         MODO_SOLO_HUMANO = True 
         print(f"\n🎮 MODO ENTRENAMIENTO HÍBRIDO ACTIVO ({PASOS_HUMANOS} pasos)")
-        
         env = obtener_entorno_vectorizado(render_mode="human")
         model = DQN("CnnPolicy", env, buffer_size=50000, learning_starts=1000, exploration_fraction=0.2)
         obs = env.reset()
@@ -225,102 +203,80 @@ if __name__ == "__main__":
                 obs = next_obs
                 current_steps += 1
                 time.sleep(0.04) 
-                if dones[0]:
-                    obs = env.reset()
-        except KeyboardInterrupt:
-            print("\n⚠️ Interrupción manual en Warmup.")
+                if dones[0]: obs = env.reset()
+        except KeyboardInterrupt: pass
         print("\n✅ ¡Fase Humana Completada!")
         env.close()
 
     # --- FASE 2: ENTRENAMIENTO IA ---
     MODO_SOLO_HUMANO = False 
-    
-    print(f"\n🛡️ ESTADO DE SEGURIDAD:")
-    print(f" - Escudo: {'ON' if USAR_ESCUDO_IA else 'OFF'} (Activa a {DISTANCIA_ESCUDO} px)")
-    print(f" - Recompensa: {'ON' if PENALIZAR_PELIGRO else 'OFF'} (Penaliza a {DISTANCIA_RECOMPENSA} px)")
-    print("🚀 Iniciando entrenamiento DQN...")
+    print(f"\n🚀 Iniciando entrenamiento DQN ({PASOS_ENTRENAMIENTO} pasos)...")
     
     env = obtener_entorno_vectorizado(render_mode=None)
-    
     if 'model' in locals():
         model.set_env(env)
         model.learning_starts = 0 
     else:
-        print("ℹ️ Creando modelo nuevo...")
         model = DQN("CnnPolicy", env, buffer_size=50000, learning_starts=1000, exploration_fraction=0.2)
 
-    # Inicializamos el Callback de Métricas Completas
+    # Callback
     metrics_callback = MetricsLoggingCallback(log_interval=LOG_INTERVALO, verbose=1)
 
     try:
         model.learn(total_timesteps=PASOS_ENTRENAMIENTO, progress_bar=True, callback=metrics_callback)
     except KeyboardInterrupt:
-        print("\n⚠️ Entrenamiento detenido por el usuario.")
+        print("\n⚠️ Entrenamiento detenido manualmente.")
 
-    # Generación de nombre
-    tipo_entreno = "Imitation" if USAR_IMITATION_WARMUP else "IA_Sola"
-    if USAR_ESCUDO_IA:
-        seguridad_tag = f"ShieldON_d{DISTANCIA_ESCUDO}"
-    else:
-        seguridad_tag = "ShieldOFF"
-        
-    if PENALIZAR_PELIGRO:
-        penalty_tag = f"_Penalty_d{DISTANCIA_RECOMPENSA}"
-    else:
-        penalty_tag = ""
-    
-    model_name = f"dqn_pacman_{tipo_entreno}_{seguridad_tag}{penalty_tag}_steps{PASOS_ENTRENAMIENTO}"
-    
     # Guardar modelo
-    if not os.path.exists(CARPETA_SALIDA):
-        os.makedirs(CARPETA_SALIDA)
-    ruta_modelo = os.path.join(CARPETA_SALIDA, model_name)
-    print(f"💾 Guardando modelo en: {ruta_modelo}")
-    model.save(ruta_modelo)
+    tipo = "Imitation" if USAR_IMITATION_WARMUP else "IA_Sola"
+    s_tag = f"ShieldON_d{DISTANCIA_ESCUDO}" if USAR_ESCUDO_IA else "ShieldOFF"
+    r_tag = f"_Penalty_d{DISTANCIA_RECOMPENSA}" if PENALIZAR_PELIGRO else ""
+    model_name = f"dqn_pacman_{tipo}_{s_tag}{r_tag}_steps{PASOS_ENTRENAMIENTO}"
     
+    if not os.path.exists(CARPETA_SALIDA): os.makedirs(CARPETA_SALIDA)
+    ruta_modelo = os.path.join(CARPETA_SALIDA, model_name)
+    model.save(ruta_modelo)
+    print(f"💾 Modelo guardado: {ruta_modelo}")
     env.close()
 
     # ==========================================
-    # 5. GUARDADO AVANZADO DE LOGS EN CSV
+    # 5. GUARDADO FORMATO LARGO (TIDY DATA)
     # ==========================================
-    print(f"\n📝 Procesando logs de entrenamiento...")
+    print(f"\n📝 Guardando historial en formato largo (Filas por Step)...")
     
-    # Datos básicos del modelo
-    row_data = {
-        "Model_Name": model_name,
+    # 1. Recuperamos los datos del callback (Lista de diccionarios con Steps)
+    raw_rows = metrics_callback.rows_buffer
+    
+    # 2. Preparamos la info estática del modelo (Configuración)
+    config_info = {
+        "Model_ID": model_name, # Identificador único para agrupar luego en gráficas
         "Imitation": USAR_IMITATION_WARMUP,
-        "Shield": USAR_ESCUDO_IA,
+        "Shield_Active": USAR_ESCUDO_IA,
         "Shield_Dist": DISTANCIA_ESCUDO if USAR_ESCUDO_IA else 0,
-        "Reward_Shaping": PENALIZAR_PELIGRO,
+        "Reward_Active": PENALIZAR_PELIGRO,
         "Reward_Dist": DISTANCIA_RECOMPENSA if PENALIZAR_PELIGRO else 0,
-        "Total_Steps": PASOS_ENTRENAMIENTO
+        "Total_Steps_Planned": PASOS_ENTRENAMIENTO
     }
     
-    # Extraemos el historial del callback
-    # Estructura: self.history["Deaths"][step] = valor
-    metrics_data = metrics_callback.history
-    
-    # Obtenemos la lista de pasos registrados (e.g., 5000, 10000...)
-    # Usamos "Deaths" como referencia, pero todos tienen las mismas claves
-    registered_steps = sorted(metrics_data["Deaths"].keys())
-    
-    # Aplanamos los diccionarios en columnas: Step_5000_Deaths, Step_5000_Efficiency, etc.
-    for step in registered_steps:
-        for metric_name, values_dict in metrics_data.items():
-            # Ejemplo de columna: Step_5000_Deaths
-            col_name = f"Step_{step}_{metric_name}"
-            row_data[col_name] = values_dict[step]
+    # 3. Fusionamos cada fila de steps con la info del modelo
+    final_rows = []
+    for row in raw_rows:
+        # Unimos los dos diccionarios (Config + Métricas del paso)
+        merged_row = {**config_info, **row}
+        final_rows.append(merged_row)
         
-    new_df = pd.DataFrame([row_data])
+    new_df = pd.DataFrame(final_rows)
 
+    # 4. Guardamos/Añadimos al CSV maestro
     if os.path.exists(ARCHIVO_CSV_LOGS):
-        # Leemos y concatenamos para añadir la fila
+        # Si existe, lo cargamos y añadimos las nuevas filas al final
         existing_df = pd.read_csv(ARCHIVO_CSV_LOGS)
         combined_df = pd.concat([existing_df, new_df], ignore_index=True)
         combined_df.to_csv(ARCHIVO_CSV_LOGS, index=False)
-        print(f"✅ Datos añadidos a '{ARCHIVO_CSV_LOGS}'")
+        print(f"✅ Se han añadido {len(new_df)} filas al archivo '{ARCHIVO_CSV_LOGS}'")
     else:
+        # Si no existe, lo creamos
         new_df.to_csv(ARCHIVO_CSV_LOGS, index=False)
-        print(f"✅ Archivo '{ARCHIVO_CSV_LOGS}' creado con métricas detalladas.")
+        print(f"✅ Archivo '{ARCHIVO_CSV_LOGS}' creado con {len(new_df)} filas.")
 
-    print("👋 ¡Hasta la próxima!")
+    print("👋 ¡Entrenamiento finalizado!")
