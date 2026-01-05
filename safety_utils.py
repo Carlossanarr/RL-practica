@@ -42,20 +42,27 @@ class PacmanSafetyMonitor:
 
     def is_danger(self, pacman_pos, ghosts_pos, threshold=30):
         """
-        Verifica si algún fantasma está más cerca de 'threshold' (distancia Manhattan).
-        threshold=30 es un valor aprox de 'peligro cercano'.
+        Devuelve:
+        - is_danger (bool): True si el fantasma más cercano está dentro del umbral
+        - min_dist (int): distancia Manhattan mínima al fantasma más cercano
         """
+
+        # Seguridad extra: si no hay fantasmas, no hay peligro
+        if not ghosts_pos:
+            return False, 999
+
         px, py = pacman_pos
-        
-        for gx, gy in ghosts_pos:
-            # Distancia Manhattan: |x1 - x2| + |y1 - y2|
-            dist = abs(px - gx) + abs(py - gy)
-            
-            if dist < threshold:
-                
-                return True, dist # ¡PELIGRO!
-                
-        return False, 999 # A salvo
+
+        # Distancia mínima real
+        min_dist = min(
+            abs(px - gx) + abs(py - gy)
+            for gx, gy in ghosts_pos
+        )
+
+        is_unsafe = min_dist < threshold
+
+        return is_unsafe, min_dist
+
 
     def get_safe_action(self, pacman_pos, ghosts_pos):
         """
