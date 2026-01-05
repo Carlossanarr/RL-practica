@@ -14,7 +14,7 @@ gym.register_envs(ale_py)
 # =========================================================
 # ⚙️ CONFIGURACIÓN DEL EXAMEN
 # =========================================================
-MODELO_A_CARGAR = "dqn_pacman_IA_Sola_ShieldON_Penalty_steps10000" 
+MODELO_A_CARGAR = "dqn_pacman_IA_Sola_steps10000" 
 CARPETA_MODELOS = "agentes_entrenados" 
 NUM_EPISODIOS = 5                
 RENDERIZAR = False # True para ver jugar a la IA
@@ -22,9 +22,9 @@ CARPETA_SALIDA = "validacion"
 
 # --- CONFIGURACIÓN DE SEGURIDAD (Debe coincidir con tu experimento) ---
 USAR_SHIELD = True # ¿Activamos el escudo en la validación?
-DISTANCIA_ESCUDO = 7.5 # IMPORTANTE: Poner  la misma distancia que usaste al entrenar (10, 25 o 50)
+DISTANCIA_ESCUDO = 1 # IMPORTANTE: Poner  la misma distancia que usaste al entrenar (10, 25 o 50)
 
-DISTANCIA_RECOMPENSA = 10 # Debe coincidir con el valor usado en entrenamiento
+DISTANCIA_RECOMPENSA = 5 # Debe coincidir con el valor usado en entrenamiento
 
 # =========================================================
 
@@ -155,7 +155,9 @@ if __name__ == "__main__":
 
                 # ------------ METRICA UNSAFE STEPS --------------
                 # ---- Conteo de pasos inseguros (umbral DISTANCIA_RECOMPENSA) ----
-                pacman_pos, ghosts_pos = monitor_metricas.get_positions(val_env.envs[0])
+                base_env0 = val_env.venv.envs[0]
+                pacman_pos, ghosts_pos = monitor_metricas.get_positions(base_env0)
+
 
                 #if steps == 0:
                 #    print("DEBUG positions:", pacman_pos, ghosts_pos[:2], "n_ghosts=", len(ghosts_pos))
