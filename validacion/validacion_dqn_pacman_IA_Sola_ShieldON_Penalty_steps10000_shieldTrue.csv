@@ -1,6 +1,0 @@
-Episodio,Recompensa,Duracion,Intervenciones,Eficiencia_Pto_Paso,Ratio_Seguridad_IA,Con_Escudo,Modelo
-1,390.0,437,254,0.8924485,41.87643020594965,True,dqn_pacman_IA_Sola_ShieldON_Penalty_steps10000
-2,220.0,443,261,0.496614,41.08352144469526,True,dqn_pacman_IA_Sola_ShieldON_Penalty_steps10000
-3,290.0,441,315,0.65759635,28.57142857142857,True,dqn_pacman_IA_Sola_ShieldON_Penalty_steps10000
-4,220.0,461,309,0.47722343,32.97180043383948,True,dqn_pacman_IA_Sola_ShieldON_Penalty_steps10000
-5,290.0,441,293,0.65759635,33.56009070294784,True,dqn_pacman_IA_Sola_ShieldON_Penalty_steps10000
