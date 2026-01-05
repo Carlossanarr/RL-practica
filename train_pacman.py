@@ -12,15 +12,20 @@ import os
 # ==========================================
 # 0. CONFIGURACIÓN
 # ==========================================
-USAR_IMITATION_WARMUP = False   # ¿Juegas tú primero?
+USAR_IMITATION_WARMUP = False # ¿Juegas tú primero? (Warmup)
 PASOS_HUMANOS = 1000          
 PASOS_ENTRENAMIENTO = 10000  
 ENV_ID = "ALE/MsPacman-v5"
-CARPETA_SALIDA = "agentes_entrandos"  # <--- Carpeta donde se guardarán los .zip
+CARPETA_SALIDA = "agentes_entrenados" 
 
-# --- CONFIGURACIÓN DE SEGURIDAD ---
-USAR_ESCUDO_IA = False          # Si True: El código sobreescribe la acción para salvar a Pacman
-PENALIZAR_PELIGRO = True       # Si True: Resta puntos (-10) si hay fantasmas cerca
+# --- CONFIGURACIÓN DE SEGURIDAD (SHIELDING) ---
+USAR_ESCUDO_IA = True # Si True: El código interviene para salvar a Pacman
+DISTANCIA_ESCUDO = 10 # Distancia (píxeles) a la que salta el escudo (Emergencia)
+
+# --- CONFIGURACIÓN DE RECOMPENSA (REWARD SHAPING) ---
+PENALIZAR_PELIGRO = True # Si True: Resta puntos si hay fantasmas cerca
+DISTANCIA_RECOMPENSA = 25 # Distancia (píxeles) a la que empieza a penalizar (Prudencia)
+PENALIZACION = -10.0 # Cuántos puntos restar
 
 # VARIABLE DE ESTADO (No tocar)
 MODO_SOLO_HUMANO = False 
@@ -44,55 +49,67 @@ class AddChannelDimWrapper(gym.ObservationWrapper):
         return obs
 
 class SafeShieldWrapper(gym.Wrapper):
-    def __init__(self, env):
+    def __init__(self, env, dist_shield, dist_reward, penalty_val):
         super().__init__(env)
         self.monitor = PacmanSafetyMonitor()
-        self.interventions = 0   # Veces que el escudo corrigió la acción
-        self.penalties_applied = 0 # Veces que se aplicó el castigo
+        self.dist_shield = dist_shield
+        self.dist_reward = dist_reward
+        self.penalty_val = penalty_val
+        
+        self.interventions = 0   
+        self.penalties_applied = 0 
         
     def step(self, action):
         # 1. Si está jugando el humano, no intervenimos nunca
         if MODO_SOLO_HUMANO:
             return self.env.step(action)
 
-        # 2. Análisis de Seguridad (Siempre se calcula)
+        # 2. Análisis de Seguridad
+        # Calculamos usando el umbral mayor para asegurarnos de obtener la distancia real 
+        # si está dentro del rango de "visión" más amplio (generalmente el de recompensa)
+        max_dist = max(self.dist_shield, self.dist_reward)
         pacman_pos, ghosts_pos = self.monitor.get_positions(self.env)
-        is_unsafe, dist = self.monitor.is_danger(pacman_pos, ghosts_pos, threshold=25)
+        
+        # is_danger devuelve la distancia al fantasma más cercano
+        is_unsafe_general, dist = self.monitor.is_danger(pacman_pos, ghosts_pos, threshold=max_dist)
         
         final_action = action
-        penalty = 0.0
+        reward_adjustment = 0.0
 
-        # 3. Lógica de Penalización (Independiente del Escudo)
-        if is_unsafe and PENALIZAR_PELIGRO:
-            penalty = -10.0
+        # 3. Lógica de Penalización (REWARD SHAPING)
+        # Se activa si estamos más cerca que el umbral de prudencia (ej: 50px)
+        if PENALIZAR_PELIGRO and dist < self.dist_reward:
+            reward_adjustment = self.penalty_val
             self.penalties_applied += 1
 
-        # 4. Lógica del Escudo (Intervención)
-        if is_unsafe and USAR_ESCUDO_IA:
+        # 4. Lógica del Escudo (INTERVENCIÓN)
+        # Se activa si estamos más cerca que el umbral de emergencia (ej: 10px) y el escudo está ON
+        if USAR_ESCUDO_IA and dist < self.dist_shield:
             safe_action = self.monitor.get_safe_action(pacman_pos, ghosts_pos)
             final_action = safe_action
             self.interventions += 1
             
-        # Ejecutamos la acción
+        # Ejecutamos la acción (original o corregida)
         obs, reward, terminated, truncated, info = self.env.step(final_action)
         
-        # Aplicamos la penalización al reward
-        reward += penalty
+        # Aplicamos el ajuste a la recompensa
+        reward += reward_adjustment
             
         return obs, reward, terminated, truncated, info
 
     def close(self):
-        # Imprimir estadísticas al cerrar el entorno
         if not MODO_SOLO_HUMANO: 
             print("\n" + "="*45)
             print("📊 ESTADÍSTICAS DE SEGURIDAD (Post-Entreno)")
-            # Solo mostramos penalizaciones si la opción estaba activa, para no confundir
             if PENALIZAR_PELIGRO:
-                print(f"   📉  Veces Penalizado (-10 pts): {self.penalties_applied}")
+                print(f" 📉 Veces Penalizado (Dist < {self.dist_reward}): {self.penalties_applied}")
             else:
-                print(f"   📉  Penalización desactivada (0)")
+                print(f" 📉 Penalización desactivada (0)")
                 
-            print(f"   🛡️  Intervenciones del Escudo: {self.interventions}")
+            if USAR_ESCUDO_IA:
+                print(f" 🛡️ Intervenciones del Escudo (Dist < {self.dist_shield}): {self.interventions}")
+            else:
+                print(f" 🛡️ Escudo desactivado (0)")
             print("="*45 + "\n")
         return super().close()
 
@@ -103,7 +120,12 @@ def crear_entorno(render_mode=None):
     env = gym.make(ENV_ID, frameskip=1, render_mode=render_mode)
     env = gym.wrappers.AtariPreprocessing(env, noop_max=0, frame_skip=4, screen_size=84, terminal_on_life_loss=False, grayscale_obs=True)
     env = AddChannelDimWrapper(env)
-    env = SafeShieldWrapper(env)
+    
+    # Pasamos las variables globales al wrapper
+    env = SafeShieldWrapper(env, 
+                            dist_shield=DISTANCIA_ESCUDO, 
+                            dist_reward=DISTANCIA_RECOMPENSA, 
+                            penalty_val=PENALIZACION)
     env = Monitor(env)
     return env
 
@@ -128,7 +150,7 @@ def obtener_accion_humana():
 # ==========================================
 if __name__ == "__main__":
     
-    print("\n⚙️  Inicializando entorno...")
+    print("\n⚙️ Inicializando entorno...")
     
     # FASE 1: JUEGO HUMANO
     if USAR_IMITATION_WARMUP:
@@ -172,8 +194,8 @@ if __name__ == "__main__":
     MODO_SOLO_HUMANO = False 
     
     print(f"\n🛡️ ESTADO DE SEGURIDAD:")
-    print(f"   - Escudo Activo (Intervención): {USAR_ESCUDO_IA}")
-    print(f"   - Penalización por Riesgo (Reward Shaping): {PENALIZAR_PELIGRO}")
+    print(f" - Escudo: {'ON' if USAR_ESCUDO_IA else 'OFF'} (Activa a {DISTANCIA_ESCUDO} px)")
+    print(f" - Recompensa: {'ON' if PENALIZAR_PELIGRO else 'OFF'} (Penaliza a {DISTANCIA_RECOMPENSA} px)")
     print("🚀 Iniciando entrenamiento DQN...")
     
     env = obtener_entorno_vectorizado(render_mode=None)
@@ -190,10 +212,18 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n⚠️ Entrenamiento detenido por el usuario. Guardando progreso...")
 
-    # Generación de nombre actualizada
+    # Generación de nombre con TODOS los parámetros
     tipo_entreno = "Imitation" if USAR_IMITATION_WARMUP else "IA_Sola"
-    seguridad_tag = "ShieldON" if USAR_ESCUDO_IA else "ShieldOFF"
-    penalty_tag = "_Penalty" if PENALIZAR_PELIGRO else ""
+    
+    if USAR_ESCUDO_IA:
+        seguridad_tag = f"ShieldON_d{DISTANCIA_ESCUDO}"
+    else:
+        seguridad_tag = "ShieldOFF"
+        
+    if PENALIZAR_PELIGRO:
+        penalty_tag = f"_Penalty_d{DISTANCIA_RECOMPENSA}"
+    else:
+        penalty_tag = ""
     
     nombre_archivo = f"dqn_pacman_{tipo_entreno}_{seguridad_tag}{penalty_tag}_steps{PASOS_ENTRENAMIENTO}"
     

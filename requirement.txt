@@ -6,3 +6,5 @@ numpy
 autorom[accept-rom-license]
 torch
 keyboard
+opencv-python-headless
+"stable-baselines3[extra]"

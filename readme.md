@@ -38,7 +38,7 @@ Se diferencia de una implementación estándar por incluir técnicas avanzadas d
 Instalar las librerías necesarias:
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirement.txt
 ```
 
 3. Descargar los juegos de Atari 
