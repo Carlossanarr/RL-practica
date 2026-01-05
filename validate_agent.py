@@ -260,11 +260,36 @@ if __name__ == "__main__":
         print(f"Winrate: {100 * df['Win'].mean():.1f}%")
         
         # Nombre del archivo CSV actualizado con la distancia
-        dist_tag = f"_d{DISTANCIA_ESCUDO}" if USAR_SHIELD else "_NoShield"
-        nombre_csv = f"validacion_{MODELO_A_CARGAR}{dist_tag}.csv"
+        escudo_tag = f"_shield_d{DISTANCIA_ESCUDO}" if USAR_SHIELD else "_NoShield"
+        reward_tag = f"_reward_d{DISTANCIA_RECOMPENSA}"
+        nombre_csv = f"validacion_{MODELO_A_CARGAR}{escudo_tag}{reward_tag}.csv"
         ruta_completa = os.path.join(CARPETA_SALIDA, nombre_csv)
         
-        df.to_csv(ruta_completa, index=False)
+        # --- Añadir fila de medias ---
+        cols_mean = [
+            "Pasos totales", "Recompensa", "Duracion", "Intervenciones",
+            "Eficiencia_Pto_Paso", "Ratio_Seguridad_IA", "Muertes",
+            "Puntos_por_muerte", "Win", "UnsafeSteps", "UnsafeRatio"
+        ]
+
+        resumen = {c: "" for c in df.columns}   # por defecto vacío en todo
+        resumen["Episodio"] = "MEDIA"
+
+        for c in cols_mean:
+            if c in df.columns:
+                resumen[c] = df[c].mean()
+
+        # Mantén metadata (opcional, pero queda bien)
+        resumen["Con_Escudo"] = USAR_SHIELD
+        resumen["Distancia_Recompensa"] = DISTANCIA_RECOMPENSA
+        resumen["Distancia_Escudo"] = DISTANCIA_ESCUDO if USAR_SHIELD else 0
+        resumen["Modelo"] = MODELO_A_CARGAR
+        resumen["EndReason"] = ""
+
+        df_out = pd.concat([df, pd.DataFrame([resumen])], ignore_index=True)
+
+        df_out.to_csv(ruta_completa, index=False)
+
         print(f"📝 Resultados guardados en: {ruta_completa}")
     else:
         print("No se completó ningún episodio.")
