@@ -3,10 +3,10 @@ import ale_py
 from stable_baselines3 import DQN
 from stable_baselines3.common.vec_env import VecFrameStack, DummyVecEnv, VecTransposeImage
 from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.callbacks import BaseCallback # <--- Importante para el callback
+from stable_baselines3.common.callbacks import BaseCallback 
 from safety_utils import PacmanSafetyMonitor 
 import numpy as np
-import pandas as pd # <--- Necesario para guardar el CSV
+import pandas as pd  
 import time
 import keyboard
 import os
@@ -16,19 +16,19 @@ import os
 # ==========================================
 USAR_IMITATION_WARMUP = False # ¿Juegas tú primero? (Warmup)
 PASOS_HUMANOS = 3000          
-PASOS_ENTRENAMIENTO = 25000 
-LOG_INTERVALO = 5000 # <--- Cada cuántos pasos guardamos el dato de muertes (5k para mejor gráfica)
+PASOS_ENTRENAMIENTO = 10000 
+LOG_INTERVALO = 1000 # DEJAR FIJO POR FAVOR
 ENV_ID = "ALE/MsPacman-v5"
 CARPETA_SALIDA = "agentes_entrenados" 
-ARCHIVO_CSV_LOGS = "historial_muertes_training.csv" # <--- Nombre del archivo acumulativo
+ARCHIVO_CSV_LOGS = "historial_training_completo.csv" # <--- Nombre nuevo para diferenciarlo
 
 # --- CONFIGURACIÓN DE SEGURIDAD (SHIELDING) ---
 USAR_ESCUDO_IA = True # Si True: El código interviene para salvar a Pacman
-DISTANCIA_ESCUDO = 10 # Distancia (píxeles) a la que salta el escudo (Emergencia)
+DISTANCIA_ESCUDO = 10 # Distancia (píxeles) a la que salta el escudo
 
 # --- CONFIGURACIÓN DE RECOMPENSA (REWARD SHAPING) ---
 PENALIZAR_PELIGRO = True # Si True: Resta puntos si hay fantasmas cerca
-DISTANCIA_RECOMPENSA = 25 # Distancia (píxeles) a la que empieza a penalizar (Prudencia)
+DISTANCIA_RECOMPENSA = 25 # Distancia (píxeles) a la que empieza a penalizar
 PENALIZACION = -10.0 # Cuántos puntos restar
 
 # VARIABLE DE ESTADO (No tocar)
@@ -72,11 +72,13 @@ class SafeShieldWrapper(gym.Wrapper):
         final_action = action
         reward_adjustment = 0.0
 
+        # Lógica de Penalización
         if PENALIZAR_PELIGRO and dist < self.dist_reward:
             severity = 1.0 - (dist / self.dist_reward)
             reward_adjustment = self.penalty_val * severity
             self.penalties_applied += 1
 
+        # Lógica del Escudo
         if USAR_ESCUDO_IA and dist < self.dist_shield:
             safe_action = self.monitor.get_safe_action(pacman_pos, ghosts_pos)
             final_action = safe_action
@@ -84,6 +86,11 @@ class SafeShieldWrapper(gym.Wrapper):
             
         obs, reward, terminated, truncated, info = self.env.step(final_action)
         reward += reward_adjustment
+        
+        # --- NUEVO: Inyectamos estadísticas en 'info' para el Callback ---
+        info['safe_interventions'] = self.interventions
+        info['safe_penalties'] = self.penalties_applied
+        
         return obs, reward, terminated, truncated, info
 
     def close(self):
@@ -102,48 +109,70 @@ class SafeShieldWrapper(gym.Wrapper):
         return super().close()
 
 # ==========================================
-# 2. CALLBACK PARA CONTAR MUERTES
+# 2. CALLBACK DE MÉTRICAS AVANZADAS
 # ==========================================
-class DeathLoggingCallback(BaseCallback):
+class MetricsLoggingCallback(BaseCallback):
     """
-    Callback personalizado para registrar muertes acumuladas durante el entrenamiento.
+    Registra Muertes, Eficiencia, PPM, Intervenciones y Penalizaciones cada X pasos.
     """
     def __init__(self, log_interval=5000, verbose=0):
-        super(DeathLoggingCallback, self).__init__(verbose)
+        super(MetricsLoggingCallback, self).__init__(verbose)
         self.log_interval = log_interval
+        
+        # Acumuladores internos
         self.total_deaths = 0
+        self.total_reward_accumulated = 0.0 # Recompensa total sumada paso a paso
         self.last_lives = None
-        # Diccionario para guardar el historial: {step: muertes_acumuladas}
-        self.death_history = {} 
+        
+        # Historial de datos (diccionarios paso -> valor)
+        self.history = {
+            "Deaths": {},
+            "Efficiency": {},
+            "PPM": {},
+            "Interventions": {},
+            "Penalties": {}
+        }
 
     def _on_step(self) -> bool:
-        # Accedemos a la info del entorno (vectorizado)
-        infos = self.locals['infos']
+        # Acceso a infos y rewards del vector (asumimos 1 ambiente)
+        info = self.locals['infos'][0]
+        reward = self.locals['rewards'][0]
         
-        # Iteramos por los entornos (normalmente 1 en DummyVecEnv)
-        current_lives = 0
-        for info in infos:
-            # ALE/Gymnasium suele devolver 'lives' en el diccionario info
-            if 'lives' in info:
-                current_lives += info['lives']
+        # 1. Acumular recompensa bruta
+        self.total_reward_accumulated += reward
         
-        # Inicialización
-        if self.last_lives is None:
+        # 2. Detectar Muertes
+        current_lives = info.get('lives', 0)
+        if self.last_lives is None: 
             self.last_lives = current_lives
             
-        # Detectar muerte: Si las vidas bajan, sumamos al contador
         if current_lives < self.last_lives:
             diff = self.last_lives - current_lives
             self.total_deaths += diff
-            
-        # Si las vidas suben (reset del juego), actualizamos sin contar muerte
-        self.last_lives = current_lives
         
-        # Registrar datos según el intervalo
+        self.last_lives = current_lives # Actualizamos vidas (si suben por reset, no pasa nada)
+        
+        # 3. Leer estadísticas del Wrapper
+        current_interventions = info.get('safe_interventions', 0)
+        current_penalties = info.get('safe_penalties', 0)
+        
+        # 4. Registrar Logs en Intervalos
         if self.num_timesteps % self.log_interval == 0:
-            self.death_history[self.num_timesteps] = self.total_deaths
+            steps = self.num_timesteps
+            
+            # Cálculos
+            efficiency = self.total_reward_accumulated / steps if steps > 0 else 0
+            ppm = (self.total_reward_accumulated / self.total_deaths) if self.total_deaths > 0 else self.total_reward_accumulated
+            
+            # Guardar en historial
+            self.history["Deaths"][steps] = self.total_deaths
+            self.history["Efficiency"][steps] = efficiency
+            self.history["PPM"][steps] = ppm
+            self.history["Interventions"][steps] = current_interventions
+            self.history["Penalties"][steps] = current_penalties
+            
             if self.verbose > 0:
-                print(f"Step {self.num_timesteps}: Muertes acumuladas = {self.total_deaths}")
+                print(f"Step {steps}: Deaths={self.total_deaths} | Eff={efficiency:.3f} | PPM={ppm:.1f} | Int={current_interventions}")
                 
         return True
 
@@ -220,12 +249,11 @@ if __name__ == "__main__":
         print("ℹ️ Creando modelo nuevo...")
         model = DQN("CnnPolicy", env, buffer_size=50000, learning_starts=1000, exploration_fraction=0.2)
 
-    # Inicializamos el Callback de Muertes
-    death_callback = DeathLoggingCallback(log_interval=LOG_INTERVALO, verbose=1)
+    # Inicializamos el Callback de Métricas Completas
+    metrics_callback = MetricsLoggingCallback(log_interval=LOG_INTERVALO, verbose=1)
 
     try:
-        # Pasamos el callback al método learn
-        model.learn(total_timesteps=PASOS_ENTRENAMIENTO, progress_bar=True, callback=death_callback)
+        model.learn(total_timesteps=PASOS_ENTRENAMIENTO, progress_bar=True, callback=metrics_callback)
     except KeyboardInterrupt:
         print("\n⚠️ Entrenamiento detenido por el usuario.")
 
@@ -253,15 +281,11 @@ if __name__ == "__main__":
     env.close()
 
     # ==========================================
-    # 5. GUARDADO DE LOGS EN CSV
+    # 5. GUARDADO AVANZADO DE LOGS EN CSV
     # ==========================================
     print(f"\n📝 Procesando logs de entrenamiento...")
     
-    # Convertimos el historial del callback a un DataFrame
-    # Estructura: Pasos (columnas) -> Muertes (valores)
-    data = death_callback.death_history
-    
-    # Creamos una fila con el nombre del modelo y la configuración
+    # Datos básicos del modelo
     row_data = {
         "Model_Name": model_name,
         "Imitation": USAR_IMITATION_WARMUP,
@@ -272,21 +296,31 @@ if __name__ == "__main__":
         "Total_Steps": PASOS_ENTRENAMIENTO
     }
     
-    # Añadimos las columnas de pasos dinámicamente (step_5000, step_10000...)
-    for step, deaths in data.items():
-        row_data[f"Step_{step}"] = deaths
+    # Extraemos el historial del callback
+    # Estructura: self.history["Deaths"][step] = valor
+    metrics_data = metrics_callback.history
+    
+    # Obtenemos la lista de pasos registrados (e.g., 5000, 10000...)
+    # Usamos "Deaths" como referencia, pero todos tienen las mismas claves
+    registered_steps = sorted(metrics_data["Deaths"].keys())
+    
+    # Aplanamos los diccionarios en columnas: Step_5000_Deaths, Step_5000_Efficiency, etc.
+    for step in registered_steps:
+        for metric_name, values_dict in metrics_data.items():
+            # Ejemplo de columna: Step_5000_Deaths
+            col_name = f"Step_{step}_{metric_name}"
+            row_data[col_name] = values_dict[step]
         
     new_df = pd.DataFrame([row_data])
 
-    # Lógica de Append: Si existe, se añade; si no, se crea
     if os.path.exists(ARCHIVO_CSV_LOGS):
-        # Leemos el existente para alinear columnas si hiciera falta
+        # Leemos y concatenamos para añadir la fila
         existing_df = pd.read_csv(ARCHIVO_CSV_LOGS)
         combined_df = pd.concat([existing_df, new_df], ignore_index=True)
         combined_df.to_csv(ARCHIVO_CSV_LOGS, index=False)
-        print(f"✅ Fila añadida a '{ARCHIVO_CSV_LOGS}'")
+        print(f"✅ Datos añadidos a '{ARCHIVO_CSV_LOGS}'")
     else:
         new_df.to_csv(ARCHIVO_CSV_LOGS, index=False)
-        print(f"✅ Archivo '{ARCHIVO_CSV_LOGS}' creado exitosamente.")
+        print(f"✅ Archivo '{ARCHIVO_CSV_LOGS}' creado con métricas detalladas.")
 
     print("👋 ¡Hasta la próxima!")
