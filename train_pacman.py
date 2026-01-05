@@ -13,8 +13,8 @@ import os
 # 0. CONFIGURACIÓN
 # ==========================================
 USAR_IMITATION_WARMUP = False # ¿Juegas tú primero? (Warmup)
-PASOS_HUMANOS = 1000          
-PASOS_ENTRENAMIENTO = 10000  
+PASOS_HUMANOS = 3000          
+PASOS_ENTRENAMIENTO = 100000  
 ENV_ID = "ALE/MsPacman-v5"
 CARPETA_SALIDA = "agentes_entrenados" 
 
