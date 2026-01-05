@@ -74,11 +74,17 @@ class SafeShieldWrapper(gym.Wrapper):
 # ---------------------------------------------------------
 # CONSTRUCCIÓN DEL ENTORNO
 # ---------------------------------------------------------
+
+
 def crear_entorno_validacion():
     modo = "human" if RENDERIZAR else None
     env = gym.make(env_id, frameskip=1, render_mode=modo)
     
     env = gym.wrappers.AtariPreprocessing(env, noop_max=0, frame_skip=4, screen_size=84, terminal_on_life_loss=False, grayscale_obs=True)
+    
+    env = gym.wrappers.TimeLimit(env, max_episode_steps=25000)
+
+
     env = AddChannelDimWrapper(env)
     
     if USAR_SHIELD:
@@ -120,10 +126,41 @@ if __name__ == "__main__":
             total_reward = 0
             steps = 0
             intervenciones_finales = 0
-            
+            # # # # # # # # # # # # # # # # 
+            muertes = 0
+            vidas_previas = None
+            win = 0
+            end_reason = "Unknown"
+            # # # # # # # # # # # # # # 
+
             while not done:
                 action, _ = model.predict(obs, deterministic=True)
                 obs, reward, done, info = val_env.step(action)
+
+                # # # # # # # # # # # # # # # # # # # 
+                # PPM
+                info0 = info[0]  # porque VecEnv
+
+                time_limit_trunc = False
+                if 'TimeLimit.truncated' in info0:
+                    time_limit_trunc = bool(info0['TimeLimit.truncated'])
+                elif 'truncated' in info0:
+                    time_limit_trunc = bool(info0['truncated'])
+
+                if done:
+                    win = 1 if time_limit_trunc else 0
+                    end_reason = "TimeLimit" if time_limit_trunc else "GameOver"
+
+
+                if 'lives' in info0:
+                    vidas_actuales = info0['lives']
+                    if vidas_previas is None:
+                        vidas_previas = vidas_actuales
+                    else:
+                        if vidas_actuales < vidas_previas:
+                            muertes += (vidas_previas - vidas_actuales)
+                        vidas_previas = vidas_actuales
+                # # # # # # # # # # # # # # # # # # # 
                 
                 total_reward += reward
                 steps += 1
@@ -138,7 +175,11 @@ if __name__ == "__main__":
             eficiencia = total_reward[0] / steps if steps > 0 else 0
             ratio_seguridad = 100 * (1 - (intervenciones_finales / steps)) if steps > 0 else 0
 
-            print(f"   🔹 Episodio {i+1}: Puntos={total_reward[0]:.0f} | Intervenciones={intervenciones_finales} | Eficiencia={eficiencia:.2f}")
+            # # # # # # # # # # # # # vv
+            puntos_por_muerte = (total_reward[0] / muertes) if muertes > 0 else float(total_reward[0])
+
+            # # # # # # # # # # # # # 
+            print(f"   🔹 Episodio {i+1}: Puntos={total_reward[0]:.0f} | Muertes={muertes} | PPM={puntos_por_muerte:.2f} | Win={win} | Intervenciones={intervenciones_finales} | Eficiencia={eficiencia:.2f}")
             
             resultados.append({
                 "Episodio": i+1,
@@ -147,6 +188,10 @@ if __name__ == "__main__":
                 "Intervenciones": intervenciones_finales,
                 "Eficiencia_Pto_Paso": eficiencia,    # NUEVA
                 "Ratio_Seguridad_IA": ratio_seguridad, # NUEVA
+                "Muertes": int(muertes),
+                "Puntos_por_muerte": float(puntos_por_muerte),
+                "Win": int(win),
+                "EndReason": end_reason,
                 "Con_Escudo": USAR_SHIELD,
                 "Modelo": MODELO_A_CARGAR
             })
@@ -163,6 +208,13 @@ if __name__ == "__main__":
         print(f"Media de Intervenciones: {df['Intervenciones'].mean():.2f}")
         print(f"Media de Eficiencia:     {df['Eficiencia_Pto_Paso'].mean():.3f} pts/paso")
         print(f"Seguridad Media (IA):    {df['Ratio_Seguridad_IA'].mean():.1f}%")
+
+        # # # # # # # # # # # # # # # # # # # # # # 
+        print(f"Media de Muertes:        {df['Muertes'].mean():.2f}")
+        print(f"Media Puntos/Muerte:     {df['Puntos_por_muerte'].mean():.2f}")
+        print(f"Winrate:                {100 * df['Win'].mean():.1f}%")
+        # # # # # # # # # # # # # # # # # # # # # # 
+
         
         nombre_archivo = f"validacion_{MODELO_A_CARGAR}_shield{USAR_SHIELD}.csv"
         ruta_completa = os.path.join(CARPETA_SALIDA, nombre_archivo)
