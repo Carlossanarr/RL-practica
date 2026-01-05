@@ -79,7 +79,9 @@ class SafeShieldWrapper(gym.Wrapper):
         # 3. Lógica de Penalización (REWARD SHAPING)
         # Se activa si estamos más cerca que el umbral de prudencia (ej: 50px)
         if PENALIZAR_PELIGRO and dist < self.dist_reward:
-            reward_adjustment = self.penalty_val
+            # Penalización lineal: más cerca = más castigo
+            severity = 1.0 - (dist / self.dist_reward)
+            reward_adjustment = self.penalty_val * severity
             self.penalties_applied += 1
 
         # 4. Lógica del Escudo (INTERVENCIÓN)
