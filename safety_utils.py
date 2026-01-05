@@ -18,16 +18,28 @@ class PacmanSafetyMonitor:
         """
         # Desempaquetamos el entorno para llegar al nucleo de Atari (ALE)
         # Dependiendo de los wrappers, puede estar en .unwrapped o .env
+        # Intentamos acceder a la RAM del entorno base ALE
         try:
-            # Intento genérico para acceder a la RAM
-            if hasattr(env, "unwrapped"):
+            # Caso normal: entorno no vectorizado
+            if hasattr(env, "unwrapped") and hasattr(env.unwrapped, "ale"):
                 ram = env.unwrapped.ale.getRAM()
+
+            # Caso VecEnv: acceder al primer entorno
+            elif hasattr(env, "envs") and len(env.envs) > 0:
+                base_env = env.envs[0]
+                if hasattr(base_env, "unwrapped") and hasattr(base_env.unwrapped, "ale"):
+                    ram = base_env.unwrapped.ale.getRAM()
+                else:
+                    raise RuntimeError("Env vectorizado sin acceso a unwrapped.ale")
+
             else:
-                # Si es un VecEnv, intentamos acceder al primer entorno
-                ram = env.envs[0].unwrapped.ale.getRAM()
-        except:
-            # Fallback si no podemos leer RAM (devuelve ceros para no romper)
-            return (0, 0), []
+                raise RuntimeError("No se pudo encontrar un entorno ALE válido")
+
+        except Exception as e:
+            raise RuntimeError(
+                f"FALLO CRÍTICO: no se pudo leer la RAM de ALE ({e}). "
+                "Revisa la cadena de wrappers o el env pasado a get_positions()."
+            )
 
         # Posición Pacman
         pacman_pos = (int(ram[self.RAM_PACMAN_X]), int(ram[self.RAM_PACMAN_Y]))
