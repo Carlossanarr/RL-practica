@@ -30,12 +30,12 @@ class PacmanSafetyMonitor:
             return (0, 0), []
 
         # Posición Pacman
-        pacman_pos = (ram[self.RAM_PACMAN_X], ram[self.RAM_PACMAN_Y])
+        pacman_pos = (int(ram[self.RAM_PACMAN_X]), int(ram[self.RAM_PACMAN_Y]))
         
         # Posición Fantasmas (lista de tuplas)
         ghosts_pos = []
         for i in range(4):
-            g_pos = (ram[self.RAM_GHOSTS_X[i]], ram[self.RAM_GHOSTS_Y[i]])
+            g_pos = (int(ram[self.RAM_GHOSTS_X[i]]), int(ram[self.RAM_GHOSTS_Y[i]]))
             ghosts_pos.append(g_pos)
             
         return pacman_pos, ghosts_pos
@@ -52,6 +52,7 @@ class PacmanSafetyMonitor:
             dist = abs(px - gx) + abs(py - gy)
             
             if dist < threshold:
+                
                 return True, dist # ¡PELIGRO!
                 
         return False, 999 # A salvo
