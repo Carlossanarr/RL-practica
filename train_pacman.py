@@ -14,15 +14,9 @@ import os
 # ==========================================
 # 0. CONFIGURACIÓN
 # ==========================================
-<<<<<<< HEAD
-USAR_IMITATION_WARMUP = True # ¿Juegas tú primero? (Warmup)
-PASOS_HUMANOS = 7500          
-PASOS_ENTRENAMIENTO = 400000
-=======
 USAR_IMITATION_WARMUP = False # ¿Juegas tú primero? (Warmup)
 PASOS_HUMANOS = 7500          
-PASOS_ENTRENAMIENTO = 400000 
->>>>>>> 94791e1417d84806aa3861fedb940eeef6780b88
+PASOS_ENTRENAMIENTO = 400000
 LOG_INTERVALO = 10000 # Cada cuántos pasos guardamos una fila en el CSV
 ENV_ID = "ALE/MsPacman-v5"
 CARPETA_SALIDA = "agentes_entrenados" 
@@ -34,11 +28,7 @@ DISTANCIA_ESCUDO = 10
 
 # --- CONFIGURACIÓN DE RECOMPENSA ---
 PENALIZAR_PELIGRO = True        
-<<<<<<< HEAD
 DISTANCIA_RECOMPENSA = 20       
-=======
-DISTANCIA_RECOMPENSA = 10       
->>>>>>> 94791e1417d84806aa3861fedb940eeef6780b88
 PENALIZACION = -5.0            
 
 # VARIABLE DE ESTADO (No tocar)
