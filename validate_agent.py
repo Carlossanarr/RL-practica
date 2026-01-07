@@ -14,17 +14,18 @@ gym.register_envs(ale_py)
 # =========================================================
 # ⚙️ CONFIGURACIÓN DEL EXAMEN
 # =========================================================
-MODELO_A_CARGAR = "dqn_pacman_IA_Sola_steps10000" 
+MODELO_A_CARGAR = "dqn_pacman_Imitation_ShieldON_d75_Penalty_d15_steps400000" 
 CARPETA_MODELOS = "agentes_entrenados" 
-NUM_EPISODIOS = 5                
+NUM_EPISODIOS = 20               
 RENDERIZAR = False # True para ver jugar a la IA
 CARPETA_SALIDA = "validacion"     
 
 # --- CONFIGURACIÓN DE SEGURIDAD (Debe coincidir con tu experimento) ---
 USAR_SHIELD = True # ¿Activamos el escudo en la validación?
-DISTANCIA_ESCUDO = 1 # IMPORTANTE: Poner  la misma distancia que usaste al entrenar (10, 25 o 50)
+DISTANCIA_ESCUDO = 7.5 # IMPORTANTE: Poner  la misma distancia que usaste al entrenar
 
-DISTANCIA_RECOMPENSA = 5 # Debe coincidir con el valor usado en entrenamiento
+
+DISTANCIA_RECOMPENSA = 15 # Debe coincidir con el valor usado en entrenamiento
 
 # =========================================================
 

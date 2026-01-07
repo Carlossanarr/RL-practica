@@ -14,22 +14,22 @@ import os
 # ==========================================
 # 0. CONFIGURACIÓN
 # ==========================================
-USAR_IMITATION_WARMUP = False # ¿Juegas tú primero? (Warmup)
-PASOS_HUMANOS = 3000          
-PASOS_ENTRENAMIENTO = 10000 
-LOG_INTERVALO = 1000 # Cada cuántos pasos guardamos una fila en el CSV
+USAR_IMITATION_WARMUP = True # ¿Juegas tú primero? (Warmup)
+PASOS_HUMANOS = 7500          
+PASOS_ENTRENAMIENTO = 400000
+LOG_INTERVALO = 10000 # Cada cuántos pasos guardamos una fila en el CSV
 ENV_ID = "ALE/MsPacman-v5"
 CARPETA_SALIDA = "agentes_entrenados" 
-ARCHIVO_CSV_LOGS = "historial_training.csv" # <--- Archivo para comparar curvas
+ARCHIVO_CSV_LOGS = "historial_training.csv" 
 
 # --- CONFIGURACIÓN DE SEGURIDAD ---
 USAR_ESCUDO_IA = True           
 DISTANCIA_ESCUDO = 10           
 
 # --- CONFIGURACIÓN DE RECOMPENSA ---
-PENALIZAR_PELIGRO = False        
-DISTANCIA_RECOMPENSA = 25       
-PENALIZACION = -10.0            
+PENALIZAR_PELIGRO = True        
+DISTANCIA_RECOMPENSA = 20       
+PENALIZACION = -5.0            
 
 # VARIABLE DE ESTADO (No tocar)
 MODO_SOLO_HUMANO = False 
