@@ -1,0 +1,22 @@
+Episodio,Pasos totales,Recompensa,Duracion,Intervenciones,Eficiencia_Pto_Paso,Ratio_Seguridad_IA,Muertes,Puntos_por_muerte,Win,EndReason,UnsafeSteps,UnsafeRatio,Con_Escudo,Distancia_Recompensa,Distancia_Escudo,Modelo
+1,727.0,1190.0,727.0,0.0,1.6368638,100.0,3.0,396.6666564941406,0.0,GameOver,72.0,9.903713892709765,False,10,0,dqn_pacman_Teacher_Reward_10_Imitation_ShieldOFF_Penalty_d10_steps400000
+2,713.0,850.0,713.0,0.0,1.1921458,100.0,3.0,283.3333435058594,0.0,GameOver,73.0,10.238429172510518,False,10,0,dqn_pacman_Teacher_Reward_10_Imitation_ShieldOFF_Penalty_d10_steps400000
+3,833.0,1010.0,833.0,0.0,1.212485,100.0,3.0,336.6666564941406,0.0,GameOver,63.0,7.563025210084033,False,10,0,dqn_pacman_Teacher_Reward_10_Imitation_ShieldOFF_Penalty_d10_steps400000
+4,497.0,440.0,497.0,0.0,0.88531184,100.0,3.0,146.6666717529297,0.0,GameOver,60.0,12.072434607645874,False,10,0,dqn_pacman_Teacher_Reward_10_Imitation_ShieldOFF_Penalty_d10_steps400000
+5,735.0,940.0,735.0,0.0,1.2789116,100.0,3.0,313.3333435058594,0.0,GameOver,82.0,11.156462585034014,False,10,0,dqn_pacman_Teacher_Reward_10_Imitation_ShieldOFF_Penalty_d10_steps400000
+6,579.0,760.0,579.0,0.0,1.312608,100.0,3.0,253.3333282470703,0.0,GameOver,62.0,10.708117443868739,False,10,0,dqn_pacman_Teacher_Reward_10_Imitation_ShieldOFF_Penalty_d10_steps400000
+7,829.0,1200.0,829.0,0.0,1.4475272,100.0,3.0,400.0,0.0,GameOver,84.0,10.132689987937274,False,10,0,dqn_pacman_Teacher_Reward_10_Imitation_ShieldOFF_Penalty_d10_steps400000
+8,867.0,950.0,867.0,0.0,1.0957325,100.0,3.0,316.6666564941406,0.0,GameOver,85.0,9.803921568627452,False,10,0,dqn_pacman_Teacher_Reward_10_Imitation_ShieldOFF_Penalty_d10_steps400000
+9,565.0,430.0,565.0,0.0,0.76106197,100.0,3.0,143.3333282470703,0.0,GameOver,70.0,12.389380530973451,False,10,0,dqn_pacman_Teacher_Reward_10_Imitation_ShieldOFF_Penalty_d10_steps400000
+10,487.0,460.0,487.0,0.0,0.9445585,100.0,3.0,153.3333282470703,0.0,GameOver,63.0,12.93634496919918,False,10,0,dqn_pacman_Teacher_Reward_10_Imitation_ShieldOFF_Penalty_d10_steps400000
+11,537.0,440.0,537.0,0.0,0.8193669,100.0,3.0,146.6666717529297,0.0,GameOver,90.0,16.75977653631285,False,10,0,dqn_pacman_Teacher_Reward_10_Imitation_ShieldOFF_Penalty_d10_steps400000
+12,561.0,470.0,561.0,0.0,0.83778965,100.0,3.0,156.6666717529297,0.0,GameOver,67.0,11.942959001782532,False,10,0,dqn_pacman_Teacher_Reward_10_Imitation_ShieldOFF_Penalty_d10_steps400000
+13,795.0,1090.0,795.0,0.0,1.3710692,100.0,3.0,363.3333435058594,0.0,GameOver,70.0,8.80503144654088,False,10,0,dqn_pacman_Teacher_Reward_10_Imitation_ShieldOFF_Penalty_d10_steps400000
+14,529.0,490.0,529.0,0.0,0.92627597,100.0,3.0,163.3333282470703,0.0,GameOver,61.0,11.531190926275993,False,10,0,dqn_pacman_Teacher_Reward_10_Imitation_ShieldOFF_Penalty_d10_steps400000
+15,573.0,450.0,573.0,0.0,0.7853403,100.0,3.0,150.0,0.0,GameOver,62.0,10.820244328097731,False,10,0,dqn_pacman_Teacher_Reward_10_Imitation_ShieldOFF_Penalty_d10_steps400000
+16,525.0,480.0,525.0,0.0,0.9142857,100.0,3.0,160.0,0.0,GameOver,62.0,11.80952380952381,False,10,0,dqn_pacman_Teacher_Reward_10_Imitation_ShieldOFF_Penalty_d10_steps400000
+17,609.0,770.0,609.0,0.0,1.2643678,100.0,3.0,256.6666564941406,0.0,GameOver,75.0,12.31527093596059,False,10,0,dqn_pacman_Teacher_Reward_10_Imitation_ShieldOFF_Penalty_d10_steps400000
+18,471.0,430.0,471.0,0.0,0.9129512,100.0,3.0,143.3333282470703,0.0,GameOver,62.0,13.163481953290871,False,10,0,dqn_pacman_Teacher_Reward_10_Imitation_ShieldOFF_Penalty_d10_steps400000
+19,603.0,500.0,603.0,0.0,0.8291874,100.0,3.0,166.6666717529297,0.0,GameOver,63.0,10.44776119402985,False,10,0,dqn_pacman_Teacher_Reward_10_Imitation_ShieldOFF_Penalty_d10_steps400000
+20,825.0,930.0,825.0,0.0,1.1272727,100.0,3.0,310.0,0.0,GameOver,63.0,7.636363636363637,False,10,0,dqn_pacman_Teacher_Reward_10_Imitation_ShieldOFF_Penalty_d10_steps400000
+MEDIA,643.0,714.0,643.0,0.0,1.0777557,100.0,3.0,237.99999923706054,0.0,,69.45,11.106806186838451,False,10,0,dqn_pacman_Teacher_Reward_10_Imitation_ShieldOFF_Penalty_d10_steps400000
