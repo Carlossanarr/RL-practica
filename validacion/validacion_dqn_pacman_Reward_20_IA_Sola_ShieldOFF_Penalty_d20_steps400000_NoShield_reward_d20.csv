@@ -1,0 +1,22 @@
+Episodio,Pasos totales,Recompensa,Duracion,Intervenciones,Eficiencia_Pto_Paso,Ratio_Seguridad_IA,Muertes,Puntos_por_muerte,Win,EndReason,UnsafeSteps,UnsafeRatio,Con_Escudo,Distancia_Recompensa,Distancia_Escudo,Modelo
+1,779.0,1750.0,779.0,0.0,2.2464697,100.0,3.0,583.3333129882812,0.0,GameOver,292.0,37.48395378690629,False,20,0,dqn_pacman_Reward_20_IA_Sola_ShieldOFF_Penalty_d20_steps400000
+2,697.0,1310.0,697.0,0.0,1.8794835,100.0,3.0,436.6666564941406,0.0,GameOver,247.0,35.43758967001435,False,20,0,dqn_pacman_Reward_20_IA_Sola_ShieldOFF_Penalty_d20_steps400000
+3,945.0,1350.0,945.0,0.0,1.4285715,100.0,3.0,450.0,0.0,GameOver,249.0,26.34920634920635,False,20,0,dqn_pacman_Reward_20_IA_Sola_ShieldOFF_Penalty_d20_steps400000
+4,833.0,1770.0,833.0,0.0,2.12485,100.0,3.0,590.0,0.0,GameOver,289.0,34.69387755102041,False,20,0,dqn_pacman_Reward_20_IA_Sola_ShieldOFF_Penalty_d20_steps400000
+5,557.0,370.0,557.0,0.0,0.6642729,100.0,3.0,123.33333587646484,0.0,GameOver,203.0,36.44524236983842,False,20,0,dqn_pacman_Reward_20_IA_Sola_ShieldOFF_Penalty_d20_steps400000
+6,691.0,810.0,691.0,0.0,1.1722142,100.0,3.0,270.0,0.0,GameOver,204.0,29.52243125904486,False,20,0,dqn_pacman_Reward_20_IA_Sola_ShieldOFF_Penalty_d20_steps400000
+7,699.0,1100.0,699.0,0.0,1.5736767,100.0,3.0,366.6666564941406,0.0,GameOver,218.0,31.187410586552218,False,20,0,dqn_pacman_Reward_20_IA_Sola_ShieldOFF_Penalty_d20_steps400000
+8,819.0,1240.0,819.0,0.0,1.5140415,100.0,3.0,413.3333435058594,0.0,GameOver,219.0,26.73992673992674,False,20,0,dqn_pacman_Reward_20_IA_Sola_ShieldOFF_Penalty_d20_steps400000
+9,1037.0,1440.0,1037.0,0.0,1.388621,100.0,3.0,480.0,0.0,GameOver,223.0,21.504339440694313,False,20,0,dqn_pacman_Reward_20_IA_Sola_ShieldOFF_Penalty_d20_steps400000
+10,865.0,1350.0,865.0,0.0,1.5606936,100.0,3.0,450.0,0.0,GameOver,283.0,32.71676300578035,False,20,0,dqn_pacman_Reward_20_IA_Sola_ShieldOFF_Penalty_d20_steps400000
+11,787.0,680.0,787.0,0.0,0.8640407,100.0,3.0,226.6666717529297,0.0,GameOver,213.0,27.064803049555273,False,20,0,dqn_pacman_Reward_20_IA_Sola_ShieldOFF_Penalty_d20_steps400000
+12,959.0,1770.0,959.0,0.0,1.8456726,100.0,3.0,590.0,0.0,GameOver,270.0,28.154327424400417,False,20,0,dqn_pacman_Reward_20_IA_Sola_ShieldOFF_Penalty_d20_steps400000
+13,803.0,860.0,803.0,0.0,1.0709838,100.0,3.0,286.6666564941406,0.0,GameOver,222.0,27.646326276463263,False,20,0,dqn_pacman_Reward_20_IA_Sola_ShieldOFF_Penalty_d20_steps400000
+14,831.0,1710.0,831.0,0.0,2.0577617,100.0,3.0,570.0,0.0,GameOver,254.0,30.56558363417569,False,20,0,dqn_pacman_Reward_20_IA_Sola_ShieldOFF_Penalty_d20_steps400000
+15,593.0,980.0,593.0,0.0,1.6526139,100.0,3.0,326.6666564941406,0.0,GameOver,218.0,36.76222596964587,False,20,0,dqn_pacman_Reward_20_IA_Sola_ShieldOFF_Penalty_d20_steps400000
+16,545.0,470.0,545.0,0.0,0.86238533,100.0,3.0,156.6666717529297,0.0,GameOver,212.0,38.899082568807344,False,20,0,dqn_pacman_Reward_20_IA_Sola_ShieldOFF_Penalty_d20_steps400000
+17,1127.0,1310.0,1127.0,0.0,1.162378,100.0,3.0,436.6666564941406,0.0,GameOver,234.0,20.763087843833187,False,20,0,dqn_pacman_Reward_20_IA_Sola_ShieldOFF_Penalty_d20_steps400000
+18,815.0,1400.0,815.0,0.0,1.7177914,100.0,3.0,466.6666564941406,0.0,GameOver,247.0,30.306748466257673,False,20,0,dqn_pacman_Reward_20_IA_Sola_ShieldOFF_Penalty_d20_steps400000
+19,867.0,1110.0,867.0,0.0,1.2802768,100.0,3.0,370.0,0.0,GameOver,223.0,25.720876585928487,False,20,0,dqn_pacman_Reward_20_IA_Sola_ShieldOFF_Penalty_d20_steps400000
+20,555.0,290.0,555.0,0.0,0.5225225,100.0,3.0,96.66666412353516,0.0,GameOver,231.0,41.62162162162162,False,20,0,dqn_pacman_Reward_20_IA_Sola_ShieldOFF_Penalty_d20_steps400000
+MEDIA,790.2,1153.5,790.2,0.0,1.429466,100.0,3.0,384.4999969482422,0.0,,237.55,30.979271209983658,False,20,0,dqn_pacman_Reward_20_IA_Sola_ShieldOFF_Penalty_d20_steps400000
