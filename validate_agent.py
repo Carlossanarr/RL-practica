@@ -8,31 +8,29 @@ import pandas as pd
 import time
 import os
 
-# Registrar entornos de Atari
 gym.register_envs(ale_py)
 
 # =========================================================
-# ⚙️ CONFIGURACIÓN DEL EXAMEN
+# CONFIGURACIÓN DEL TEST
 # =========================================================
-MODELO_A_CARGAR = "dqn_pacman_IA_Sola_ShieldOFF_Penalty_d10_steps400000" 
+MODELO_A_CARGAR = "dqn_pacman_IA_Sola_ShieldOFF_Penalty_d10_steps400000" #nombre del .zip
 CARPETA_MODELOS = "agentes_entrenados" 
 NUM_EPISODIOS = 20               
-RENDERIZAR = False # True para ver jugar a la IA
+RENDERIZAR = False # True para ver jugar a la IA (para la presentación)
 CARPETA_SALIDA = "validacion"     
 
-# --- CONFIGURACIÓN DE SEGURIDAD (Debe coincidir con tu experimento) ---
-USAR_SHIELD = True # ¿Activamos el escudo en la validación?
+#CONFIGURACIÓN DE SEGURIDAD (Debe coincidir con el experimento)
+USAR_SHIELD = True 
 DISTANCIA_ESCUDO = 0 # IMPORTANTE: Poner  la misma distancia que usaste al entrenar
 
 
-DISTANCIA_RECOMPENSA = 10 # Debe coincidir con el valor usado en entrenamiento
+DISTANCIA_RECOMPENSA = 10 #debe coincidir con el valor usado en entrenamiento
 
 # =========================================================
 
 env_id = "ALE/MsPacman-v5"
 
-# --- DEFINICIÓN DE WRAPPERS ---
-
+#DEFINICIÓN DE WRAPPERS
 class AddChannelDimWrapper(gym.ObservationWrapper):
     """Convierte (84, 84) -> (84, 84, 1). Necesario para DQN."""
     def __init__(self, env):
@@ -55,7 +53,7 @@ class SafeShieldWrapper(gym.Wrapper):
     def __init__(self, env, umbral_distancia):
         super().__init__(env)
         self.monitor = PacmanSafetyMonitor()
-        self.umbral = umbral_distancia # <-- CORRECCIÓN: Usamos la variable, no un número fijo
+        self.umbral = umbral_distancia 
         self.episode_interventions = 0 
         
     def reset(self, **kwargs):
@@ -65,7 +63,7 @@ class SafeShieldWrapper(gym.Wrapper):
     def step(self, action):
         pacman_pos, ghosts_pos = self.monitor.get_positions(self.env)
         
-        # Usamos el umbral configurado
+        #usamos el umbral configurado
         is_unsafe, dist = self.monitor.is_danger(pacman_pos, ghosts_pos, threshold=self.umbral)
         
         final_action = action
@@ -77,40 +75,36 @@ class SafeShieldWrapper(gym.Wrapper):
             
         obs, reward, terminated, truncated, info = self.env.step(final_action)
         
-        # Inyectamos el dato
         info['safe_interventions'] = self.episode_interventions
         
         return obs, reward, terminated, truncated, info
 
-# ---------------------------------------------------------
+
 # CONSTRUCCIÓN DEL ENTORNO
-# ---------------------------------------------------------
 def crear_entorno_validacion():
     modo = "human" if RENDERIZAR else None
     env = gym.make(env_id, frameskip=1, render_mode=modo)
     
     env = gym.wrappers.AtariPreprocessing(env, noop_max=0, frame_skip=4, screen_size=84, terminal_on_life_loss=False, grayscale_obs=True)
     
-    # Límite de tiempo extendido para que pueda ganar si es muy bueno
+    #limite de tiempo extendido para que pueda ganar si es muy bueno
     env = gym.wrappers.TimeLimit(env, max_episode_steps=25000)
 
     env = AddChannelDimWrapper(env)
     
     if USAR_SHIELD:
-        # CORRECCIÓN: Pasamos la distancia configurada
+        #Pasamos la distancia configurada
         env = SafeShieldWrapper(env, umbral_distancia=DISTANCIA_ESCUDO)
     
     return env
 
-# =========================================================
 # EJECUCIÓN DEL TEST
-# =========================================================
 if __name__ == "__main__":
     val_env = DummyVecEnv([crear_entorno_validacion])
     val_env = VecFrameStack(val_env, n_stack=4)
     val_env = VecTransposeImage(val_env)
 
-    # Construir ruta completa
+    # Construir ruta completa (depuración)
     model_path = os.path.join(CARPETA_MODELOS, f"{MODELO_A_CARGAR}.zip")
     
     if not os.path.exists(model_path):
@@ -143,19 +137,18 @@ if __name__ == "__main__":
             steps = 0
             intervenciones_finales = 0
             
-            # --- Variables para métricas nuevas ---
+            #Variables para métricas nuevas
             muertes = 0
             vidas_previas = None
             win = 0
             end_reason = "Unknown"
             unsafe_steps = 0
 
-            # --------------------------------------
 
             while not done:
 
-                # ------------ METRICA UNSAFE STEPS --------------
-                # ---- Conteo de pasos inseguros (umbral DISTANCIA_RECOMPENSA) ----
+                # METRICA UNSAFE STEPS
+                #Conteo de pasos inseguros (umbral DISTANCIA_RECOMPENSA)
                 base_env0 = val_env.venv.envs[0]
                 pacman_pos, ghosts_pos = monitor_metricas.get_positions(base_env0)
 
@@ -163,17 +156,15 @@ if __name__ == "__main__":
                 #if steps == 0:
                 #    print("DEBUG positions:", pacman_pos, ghosts_pos[:2], "n_ghosts=", len(ghosts_pos))
 
-
                 is_unsafe_r, _ = monitor_metricas.is_danger(pacman_pos, ghosts_pos, threshold=DISTANCIA_RECOMPENSA)
                 
                 if is_unsafe_r:
                     unsafe_steps += 1
 
-                # ------------------------------------
+
                 action, _ = model.predict(obs, deterministic=True)
                 obs, reward, done, info = val_env.step(action)
 
-                # --- LÓGICA DE MÉTRICAS NUEVAS ---
 
 
                 info0 = info[0] # Accedemos al primer entorno del vector
@@ -200,7 +191,7 @@ if __name__ == "__main__":
                         if vidas_actuales < vidas_previas:
                             muertes += (vidas_previas - vidas_actuales)
                         vidas_previas = vidas_actuales
-                # --------------------------------------
+
                 
                 total_reward += reward
                 steps += 1
@@ -211,7 +202,7 @@ if __name__ == "__main__":
                 if RENDERIZAR:
                     time.sleep(0.02) 
 
-            # CÁLCULO DE MÉTRICAS FINALES
+            #CÁLCULO DE MÉTRICAS FINALES
             eficiencia = total_reward[0] / steps if steps > 0 else 0
             ratio_seguridad = 100 * (1 - (intervenciones_finales / steps)) if steps > 0 else 0
             
@@ -239,7 +230,7 @@ if __name__ == "__main__":
                 "UnsafeRatio": float(unsafe_ratio),
                 "Con_Escudo": USAR_SHIELD,
                 "Distancia_Recompensa": DISTANCIA_RECOMPENSA,
-                "Distancia_Escudo": DISTANCIA_ESCUDO if USAR_SHIELD else 0, # Guardamos la distancia usada
+                "Distancia_Escudo": DISTANCIA_ESCUDO if USAR_SHIELD else 0, 
                 "Modelo": MODELO_A_CARGAR
             })
 
@@ -262,13 +253,12 @@ if __name__ == "__main__":
         print(f"Media UnsafeRatio: {df['UnsafeRatio'].mean():.2f}%")
         print(f"Winrate: {100 * df['Win'].mean():.1f}%")
         
-        # Nombre del archivo CSV actualizado con la distancia
         escudo_tag = f"_shield_d{DISTANCIA_ESCUDO}" if USAR_SHIELD else "_NoShield"
         reward_tag = f"_reward_d{DISTANCIA_RECOMPENSA}"
         nombre_csv = f"validacion_{MODELO_A_CARGAR}{escudo_tag}{reward_tag}.csv"
         ruta_completa = os.path.join(CARPETA_SALIDA, nombre_csv)
         
-        # --- Añadir fila de medias ---
+
         cols_mean = [
             "Pasos totales", "Recompensa", "Duracion", "Intervenciones",
             "Eficiencia_Pto_Paso", "Ratio_Seguridad_IA", "Muertes",
@@ -282,7 +272,6 @@ if __name__ == "__main__":
             if c in df.columns:
                 resumen[c] = df[c].mean()
 
-        # Mantén metadata (opcional, pero queda bien)
         resumen["Con_Escudo"] = USAR_SHIELD
         resumen["Distancia_Recompensa"] = DISTANCIA_RECOMPENSA
         resumen["Distancia_Escudo"] = DISTANCIA_ESCUDO if USAR_SHIELD else 0

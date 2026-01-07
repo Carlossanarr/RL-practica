@@ -2,7 +2,7 @@ import numpy as np
 
 class PacmanSafetyMonitor:
     def __init__(self):
-        # Offsets de memoria RAM para Ms. Pac-Man (Atari 2600)
+        # Offsets de memoria RAM para Ms. Pac-Man
         # Estos son los bytes específicos donde la consola guarda las posiciones
         self.RAM_PACMAN_X = 10
         self.RAM_PACMAN_Y = 16

@@ -14,7 +14,7 @@ import os
 # ==========================================
 # 0. CONFIGURACIÓN
 # ==========================================
-USAR_IMITATION_WARMUP = False # ¿Juegas tú primero? (Warmup)
+USAR_IMITATION_WARMUP = False # (Warmup)
 PASOS_HUMANOS = 7500          
 PASOS_ENTRENAMIENTO = 400000
 LOG_INTERVALO = 10000 # Cada cuántos pasos guardamos una fila en el CSV
@@ -31,14 +31,15 @@ PENALIZAR_PELIGRO = True
 DISTANCIA_RECOMPENSA = 20       
 PENALIZACION = -5.0            
 
+
 # VARIABLE DE ESTADO (No tocar)
 MODO_SOLO_HUMANO = False 
 
 gym.register_envs(ale_py)
 
-# ==========================================
-# 1. WRAPPERS
-# ==========================================
+
+#  WRAPPERS
+
 class AddChannelDimWrapper(gym.ObservationWrapper):
     def __init__(self, env):
         super().__init__(env)
@@ -101,9 +102,9 @@ class SafeShieldWrapper(gym.Wrapper):
             print("="*45 + "\n")
         return super().close()
 
-# ==========================================
-# 2. CALLBACK DE MÉTRICAS (DATA COLLECTOR)
-# ==========================================
+
+# CALLBACK DE MÉTRICAS (DATA COLLECTOR)
+
 class MetricsLoggingCallback(BaseCallback):
     def __init__(self, log_interval=5000, verbose=0):
         super(MetricsLoggingCallback, self).__init__(verbose)
@@ -139,7 +140,7 @@ class MetricsLoggingCallback(BaseCallback):
             efficiency = self.total_reward_accumulated / steps if steps > 0 else 0
             ppm = (self.total_reward_accumulated / self.total_deaths) if self.total_deaths > 0 else self.total_reward_accumulated
             
-            # Guardamos los datos puros en el buffer
+
             self.rows_buffer.append({
                 "Step": steps,
                 "Deaths": self.total_deaths,
@@ -155,9 +156,8 @@ class MetricsLoggingCallback(BaseCallback):
                 
         return True
 
-# ==========================================
-# 3. FUNCIONES DE ENTORNO
-# ==========================================
+
+# FUNCIONES DE ENTORNO
 def crear_entorno(render_mode=None):
     env = gym.make(ENV_ID, frameskip=1, render_mode=render_mode)
     env = gym.wrappers.AtariPreprocessing(env, noop_max=0, frame_skip=4, screen_size=84, terminal_on_life_loss=False, grayscale_obs=True)
@@ -179,14 +179,13 @@ def obtener_accion_humana():
     elif keyboard.is_pressed('down'): return 4
     return 0 
 
-# ==========================================
-# 4. EJECUCIÓN PRINCIPAL
-# ==========================================
+
+# EJECUCIÓN PRINCIPAL
 if __name__ == "__main__":
     
     print("\n⚙️ Inicializando entorno...")
     
-    # --- FASE 1: HUMAN WARMUP ---
+    # HUMAN WARMUP
     if USAR_IMITATION_WARMUP:
         MODO_SOLO_HUMANO = True 
         print(f"\n🎮 MODO ENTRENAMIENTO HÍBRIDO ACTIVO ({PASOS_HUMANOS} pasos)")
@@ -208,7 +207,7 @@ if __name__ == "__main__":
         print("\n✅ ¡Fase Humana Completada!")
         env.close()
 
-    # --- FASE 2: ENTRENAMIENTO IA ---
+    # ENTRENAMIENTO IA
     MODO_SOLO_HUMANO = False 
     print(f"\n🚀 Iniciando entrenamiento DQN ({PASOS_ENTRENAMIENTO} pasos)...")
     
@@ -239,17 +238,14 @@ if __name__ == "__main__":
     print(f"💾 Modelo guardado: {ruta_modelo}")
     env.close()
 
-    # ==========================================
-    # 5. GUARDADO FORMATO LARGO (TIDY DATA)
-    # ==========================================
+ 
+    # GUARDADO FORMATO LARGO 
     print(f"\n📝 Guardando historial en formato largo (Filas por Step)...")
-    
-    # 1. Recuperamos los datos del callback (Lista de diccionarios con Steps)
+
     raw_rows = metrics_callback.rows_buffer
-    
-    # 2. Preparamos la info estática del modelo (Configuración)
+ 
     config_info = {
-        "Model_ID": model_name, # Identificador único para agrupar luego en gráficas
+        "Model_ID": model_name, # Identificador único para agrupar luego en gráficas importante!
         "Imitation": USAR_IMITATION_WARMUP,
         "Shield_Active": USAR_ESCUDO_IA,
         "Shield_Dist": DISTANCIA_ESCUDO if USAR_ESCUDO_IA else 0,
@@ -258,7 +254,6 @@ if __name__ == "__main__":
         "Total_Steps_Planned": PASOS_ENTRENAMIENTO
     }
     
-    # 3. Fusionamos cada fila de steps con la info del modelo
     final_rows = []
     for row in raw_rows:
         # Unimos los dos diccionarios (Config + Métricas del paso)
@@ -267,7 +262,6 @@ if __name__ == "__main__":
         
     new_df = pd.DataFrame(final_rows)
 
-    # 4. Guardamos/Añadimos al CSV maestro
     if os.path.exists(ARCHIVO_CSV_LOGS):
         # Si existe, lo cargamos y añadimos las nuevas filas al final
         existing_df = pd.read_csv(ARCHIVO_CSV_LOGS)
