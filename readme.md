@@ -84,9 +84,7 @@ Al terminar los pasos definidos, la ventana se cerrará.
 
 - Fase de IA: La IA comenzará a entrenar a máxima velocidad (sin renderizado visual para ir rápido). Verás una barra de progreso en la terminal.
 
-- Finalización:
-
-Se mostrarán estadísticas de seguridad (cuántas veces intervino el escudo o se penalizó).
+- Finalización: Se mostrarán estadísticas de seguridad (cuántas veces intervino el escudo o se penalizó).
 
 El modelo se guardará automáticamente con un nombre descriptivo, por ejemplo:
 dqn_pacman_Imitation_ShieldON_Penalty_steps10000.zip
@@ -98,6 +96,11 @@ Una vez entrando un agente, se puede utilizar el archivo validate_agent.py para 
 ``` bash
 python validate_agent.py
 ```
+
+## Archivo safety_utils.py
+
+Contiene la clase PacmanSafetyMonitor que se encarga de monitorizar el juego y detectar cuando el agente está en peligro.
+Se utiliza a la hora de entrenar el agente para que pueda aprender a evitar peligros.
 
 
 
